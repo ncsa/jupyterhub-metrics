@@ -1091,7 +1091,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  us.user_email AS \"User Email\",\n  COALESCE(u.full_name, us.user_email) AS \"User Name\",\n  SUM(us.runtime_hours) AS \"Total Runtime (Hours)\",\n  COUNT(*) AS \"Application Sessions\",\n  MAX(us.session_end) AS \"Last Seen\"\nFROM user_sessions us\nLEFT JOIN users u ON us.user_email = u.email\nWHERE us.session_start >= $__timeFrom()\n  AND us.session_end <= $__timeTo()\nGROUP BY us.user_email, u.full_name\nORDER BY \"Total Runtime (Hours)\" DESC\nLIMIT 50;",
+          "rawSql": "SELECT\n  us.user_email AS \"User Email\",\n  COALESCE(u.full_name, us.user_email) AS \"User Name\",\n  SUM(us.runtime_hours) AS \"Total Runtime (Hours)\",\n  COUNT(*) AS \"Application Sessions\",\n  MAX(us.session_end) AS \"Last Seen\"\nFROM user_sessions us\nLEFT JOIN users u ON us.user_email = u.email\nWHERE us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom()\nGROUP BY us.user_email, u.full_name\nORDER BY \"Total Runtime (Hours)\" DESC\nLIMIT 50;",
           "refId": "A",
           "select": [
             [
@@ -1197,7 +1197,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  container_base AS \"Application\",\n  string_agg(DISTINCT container_version, ', ' ORDER BY container_version) AS \"Version\",\n  COUNT(DISTINCT user_email) AS \"Unique Users\",\n  COUNT(*) AS \"Total Sessions\"\nFROM user_sessions\nWHERE session_start >= $__timeFrom()\n  AND session_end <= $__timeTo()\nGROUP BY container_base\nORDER BY \"Total Sessions\" DESC;",
+          "rawSql": "SELECT\n  container_base AS \"Application\",\n  string_agg(DISTINCT container_version, ', ' ORDER BY container_version) AS \"Version\",\n  COUNT(DISTINCT user_email) AS \"Unique Users\",\n  COUNT(*) AS \"Total Sessions\"\nFROM user_sessions\nWHERE session_start <= $__timeTo()\n  AND session_end >= $__timeFrom()\nGROUP BY container_base\nORDER BY \"Total Sessions\" DESC;",
           "refId": "A",
           "select": [
             [
