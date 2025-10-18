@@ -1,0 +1,16 @@
+{{- if .Values.rbac.create }}
+apiVersion: {{ include "jupyterhub-metrics.rbac.apiVersion" . }}
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.rbac.clusterRoleName }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.rbac.clusterRoleName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "jupyterhub-metrics.serviceAccountName" . }}
+    namespace: {{ include "jupyterhub-metrics.namespace" . }}
+{{- end }}

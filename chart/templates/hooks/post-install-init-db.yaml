@@ -1,0 +1,104 @@
+{{- if .Values.timescaledb.enabled }}
+# Post-install hook: Initialize database after TimescaleDB is running
+# This runs after the main deployment to set up the database schema
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-init-db
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database-init
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        {{- include "jupyterhub-metrics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database-init
+    spec:
+      {{- with .Values.advanced.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.advanced.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.advanced.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "jupyterhub-metrics.serviceAccountName" . }}
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.35
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for TimescaleDB to be ready at {{ include "jupyterhub-metrics.db.host" . }}:{{ include "jupyterhub-metrics.db.port" . }}"
+              until nc -z -w 3 {{ include "jupyterhub-metrics.db.host" . }} {{ include "jupyterhub-metrics.db.port" . }}; do
+                echo "Database is unavailable - sleeping"
+                sleep 2
+              done
+              echo "Database is available"
+      containers:
+        - name: init-db
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PGHOST
+              value: {{ include "jupyterhub-metrics.db.host" . }}
+            - name: PGPORT
+              value: {{ include "jupyterhub-metrics.db.port" . }}
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: POSTGRES_DB
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.db.passwordKey" . }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Starting database initialization..."
+
+              # Check if database exists and has tables
+              RESULT=$(psql -tc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "0")
+
+              if [ "$RESULT" -gt 0 ]; then
+                echo "Database already initialized with $RESULT tables"
+                exit 0
+              fi
+
+              echo "Initializing database schema..."
+              psql < /init/init-db.sql
+
+              echo "Database initialization completed successfully"
+          volumeMounts:
+            - name: init-db-script
+              mountPath: /init
+      volumes:
+        - name: init-db-script
+          configMap:
+            name: {{ include "jupyterhub-metrics.fullname" . }}-init-db-hook
+            defaultMode: 0755
+{{- end }}

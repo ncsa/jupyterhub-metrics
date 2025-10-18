@@ -1,0 +1,128 @@
+{{- if .Values.timescaledb.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-timescaledb
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: timescaledb
+spec:
+  serviceName: {{ .Values.timescaledb.serviceName }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "jupyterhub-metrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: timescaledb
+  template:
+    metadata:
+      labels:
+        {{- include "jupyterhub-metrics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: timescaledb
+    spec:
+      {{- with .Values.timescaledb.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.advanced.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.advanced.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.advanced.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.advanced.priorityClassName }}
+      priorityClassName: {{ .Values.advanced.priorityClassName }}
+      {{- end }}
+      containers:
+        - name: timescaledb
+          image: "{{ .Values.timescaledb.image.repository }}:{{ .Values.timescaledb.image.tag }}"
+          imagePullPolicy: {{ .Values.timescaledb.image.pullPolicy }}
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.db.passwordKey" . }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+            initialDelaySeconds: {{ .Values.timescaledb.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.timescaledb.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.timescaledb.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.timescaledb.livenessProbe.failureThreshold }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+            initialDelaySeconds: {{ .Values.timescaledb.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.timescaledb.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.timescaledb.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.timescaledb.readinessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.timescaledb.resources | nindent 12 }}
+          volumeMounts:
+            - name: timescaledb-data
+              mountPath: /var/lib/postgresql/data
+      volumes: []
+  volumeClaimTemplates:
+    - metadata:
+        name: timescaledb-data
+        labels:
+          {{- include "jupyterhub-metrics.labels" . | nindent 10 }}
+      spec:
+        accessModes:
+          - {{ .Values.timescaledb.storage.accessMode }}
+        {{- if .Values.timescaledb.storage.storageClass }}
+        storageClassName: {{ .Values.timescaledb.storage.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.timescaledb.storage.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.timescaledb.serviceName }}
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: timescaledb
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "jupyterhub-metrics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: timescaledb
+  ports:
+    - port: 5432
+      targetPort: postgresql
+      protocol: TCP
+      name: postgresql
+{{- end }}

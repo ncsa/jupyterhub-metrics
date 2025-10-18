@@ -1,0 +1,113 @@
+{{- if .Values.security.networkPolicyEnabled }}
+---
+# NetworkPolicy: Allow traffic from Grafana to TimescaleDB
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-grafana-to-db
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jupyterhub-metrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: timescaledb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jupyterhub-metrics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: grafana
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# NetworkPolicy: Allow traffic from Collector to TimescaleDB
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-collector-to-db
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jupyterhub-metrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: timescaledb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jupyterhub-metrics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: collector
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# NetworkPolicy: Allow traffic to Grafana from external (ingress/port-forward)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-grafana-ingress
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jupyterhub-metrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: grafana
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from all sources (can be restricted further)
+    - ports:
+        - protocol: TCP
+          port: 3000
+
+---
+# NetworkPolicy: Allow DNS for all pods (required for external communication)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-dns
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow traffic to TimescaleDB
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "jupyterhub-metrics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: timescaledb
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow external traffic (for package downloads, etc.)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+{{- end }}

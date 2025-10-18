@@ -1,0 +1,151 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-grafana
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  replicas: {{ .Values.grafana.replicas }}
+  selector:
+    matchLabels:
+      {{- include "jupyterhub-metrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: grafana
+  template:
+    metadata:
+      labels:
+        {{- include "jupyterhub-metrics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: grafana
+    spec:
+      {{- with .Values.grafana.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.advanced.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.advanced.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.advanced.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.advanced.priorityClassName }}
+      priorityClassName: {{ .Values.advanced.priorityClassName }}
+      {{- end }}
+      containers:
+        - name: grafana
+          image: "{{ .Values.grafana.image.repository }}:{{ .Values.grafana.image.tag }}"
+          imagePullPolicy: {{ .Values.grafana.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.grafana.passwordSecret" . }}
+                  key: GF_SECURITY_ADMIN_USER
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.grafana.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.grafana.passwordKey" . }}
+            - name: GF_INSTALL_PLUGINS
+              value: {{ .Values.grafana.plugins | join "," }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: {{ .Values.grafana.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.grafana.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.grafana.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.grafana.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: {{ .Values.grafana.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.grafana.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.grafana.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.grafana.readinessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.grafana.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.grafana.persistence.enabled }}
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+            {{- else }}
+            - name: grafana-data-empty
+              mountPath: /var/lib/grafana
+            {{- end }}
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: grafana-dashboards
+              mountPath: /var/lib/grafana/dashboards
+      volumes:
+        {{- if .Values.grafana.persistence.enabled }}
+        - name: grafana-data
+          persistentVolumeClaim:
+            claimName: {{ include "jupyterhub-metrics.fullname" . }}-grafana
+        {{- else }}
+        - name: grafana-data-empty
+          emptyDir: {}
+        {{- end }}
+        - name: grafana-datasources
+          configMap:
+            name: {{ include "jupyterhub-metrics.fullname" . }}-grafana-datasources
+        - name: grafana-provisioning
+          configMap:
+            name: {{ include "jupyterhub-metrics.fullname" . }}-grafana-provisioning
+        - name: grafana-dashboards
+          configMap:
+            name: {{ include "jupyterhub-metrics.fullname" . }}-grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-grafana
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.grafana.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "jupyterhub-metrics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+---
+{{- if .Values.grafana.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-grafana
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  accessModes:
+    - {{ .Values.grafana.persistence.accessMode }}
+  {{- if .Values.grafana.persistence.storageClass }}
+  storageClassName: {{ .Values.grafana.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.grafana.persistence.size }}
+{{- end }}
+{{- end }}

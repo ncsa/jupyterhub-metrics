@@ -1,0 +1,16 @@
+{{- if .Values.timescaledb.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-init-db-hook
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database-init
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-1"
+data:
+  init-db.sql: |
+{{ .Files.Get "files/init-db.sql" | indent 4 }}
+{{- end }}

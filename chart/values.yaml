@@ -1,0 +1,316 @@
+# JupyterHub Metrics Helm Chart - Default Values
+# This file contains all configuration options for the metrics collection system
+# Override any value using: helm install -f values.yaml --set key=value
+
+# ============================================================================
+# GLOBAL SETTINGS
+# ============================================================================
+global:
+  # Enable/disable individual components
+  timescaledbEnabled: true
+  grafanaEnabled: true
+  collectorEnabled: true
+  ingressEnabled: false
+
+  # Debug mode for troubleshooting
+  debug: false
+
+# ============================================================================
+# DATABASE CONFIGURATION (TimescaleDB / PostgreSQL)
+# ============================================================================
+db:
+  # Database name
+  name: jupyterhub_metrics
+
+  # Database user
+  user: metrics_user
+
+  # Database password - MUST be set via --set or external secret
+  # Example: --set db.password="$(openssl rand -base64 32)"
+  password: ""
+
+  # Database host (will be constructed as timescaledb.<release-namespace>.svc.cluster.local)
+  host: timescaledb
+
+  # Database port
+  port: 5432
+
+  # Use external database instead of deploying TimescaleDB
+  # If true, specify externalHost and externalPort
+  external: false
+  externalHost: ""
+  externalPort: 5432
+
+# ============================================================================
+# TIMESCALEDB CONFIGURATION
+# ============================================================================
+timescaledb:
+  # Enable TimescaleDB deployment
+  enabled: true
+
+  # TimescaleDB image configuration
+  image:
+    repository: timescale/timescaledb
+    tag: latest-pg15
+    pullPolicy: IfNotPresent
+
+  # Service name (used for internal DNS)
+  serviceName: timescaledb
+
+  # Storage configuration
+  storage:
+    size: 20Gi
+    storageClass: "" # Empty string = cluster default storage class
+    accessMode: ReadWriteOnce
+
+  # Resource requests and limits
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+  # Pod startup probes
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Pod security context
+  podSecurityContext:
+    fsGroup: 999
+    runAsNonRoot: true
+    runAsUser: 999
+
+# ============================================================================
+# GRAFANA CONFIGURATION
+# ============================================================================
+grafana:
+  # Enable Grafana deployment
+  enabled: true
+
+  # Number of replicas
+  replicas: 1
+
+  # Grafana admin credentials
+  adminUser: admin
+  # adminPassword must be set via --set or external secret
+  # Example: --set grafana.adminPassword="$(openssl rand -base64 32)"
+  adminPassword: ""
+
+  # Grafana image configuration
+  image:
+    repository: grafana/grafana
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Grafana port
+  port: 3000
+
+  # Grafana plugins to install
+  plugins:
+    - grafana-clock-panel
+
+  # Persistence configuration
+  persistence:
+    # Use PVC (true) or emptyDir (false)
+    enabled: false
+    size: 5Gi
+    storageClass: "" # Empty string = cluster default
+    accessMode: ReadWriteOnce
+
+  # Resource requests and limits
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Pod startup probes
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Pod security context
+  podSecurityContext:
+    fsGroup: 472
+    runAsNonRoot: true
+    runAsUser: 472
+
+# ============================================================================
+# METRICS COLLECTOR CONFIGURATION
+# ============================================================================
+collector:
+  # Enable collector deployment
+  enabled: true
+
+  # Collection interval in seconds (how often to collect metrics)
+  interval: "300" # 5 minutes
+
+  # Collector image configuration
+  image:
+    repository: alpine
+    tag: "3.19"
+    pullPolicy: IfNotPresent
+
+  # Resource requests and limits
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+
+# ============================================================================
+# JUPYTERHUB TARGET CONFIGURATION
+# ============================================================================
+jupyterhub:
+  # Kubernetes namespace where JupyterHub is deployed
+  namespace: jupyterhub
+
+  # Label selector to find JupyterHub singleuser pods
+  podLabelSelector: "component=singleuser-server"
+
+# ============================================================================
+# INGRESS CONFIGURATION
+# ============================================================================
+ingress:
+  # Enable ingress for Grafana
+  enabled: false
+
+  # Ingress class name (nginx, traefik, etc.)
+  className: nginx
+
+  # Hostname for Grafana access
+  host: metrics.example.com
+
+  # Ingress annotations
+  annotations:
+    # For nginx:
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+
+    # For traefik:
+    # traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    # traefik.ingress.kubernetes.io/router.tls: "true"
+
+  # TLS configuration
+  tls:
+    enabled: false
+    # Secret name containing TLS certificate
+    secretName: grafana-tls
+    # cert-manager issuer name (if using cert-manager)
+    certManagerIssuer: ""
+
+# ============================================================================
+# RBAC CONFIGURATION
+# ============================================================================
+rbac:
+  # Create RBAC resources
+  create: true
+
+  # Service account name
+  serviceAccountName: metrics-collector
+
+  # Cluster role name
+  clusterRoleName: jupyterhub-metrics-reader
+
+# ============================================================================
+# SECURITY & SECRETS
+# ============================================================================
+secrets:
+  # Use external secret for database credentials
+  # If enabled, reference an existing secret instead of creating one
+  externalSecretEnabled: false
+  externalSecretName: ""
+  externalSecretDbPasswordKey: "db-password"
+  externalSecretGrafanaPasswordKey: "grafana-password"
+
+# ============================================================================
+# SECURITY CONTEXT & POLICIES
+# ============================================================================
+security:
+  # Pod Security Standards enforcement level
+  # Options: baseline, restricted
+  # baseline: minimal restrictions (default Kubernetes)
+  # restricted: strong security (recommended for production)
+  podSecurityStandard: restricted
+
+  # Network Policy to restrict traffic
+  # If enabled, only allows traffic from Grafana to TimescaleDB and Collector to TimescaleDB
+  networkPolicyEnabled: false
+
+  # Pod Security Policy (legacy, for Kubernetes < 1.25)
+  podSecurityPolicyEnabled: false
+
+# ============================================================================
+# ADVANCED OPTIONS
+# ============================================================================
+advanced:
+  # Namespace where to deploy the metrics system
+  namespace: jupyterhub-metrics
+
+  # Create namespace if it doesn't exist
+  createNamespace: true
+
+  # Node selector for pod placement
+  nodeSelector: {}
+    # node-role: monitoring
+
+  # Tolerations for node taints
+  tolerations: []
+    # - key: "monitoring"
+    #   operator: "Equal"
+    #   value: "true"
+    #   effect: "NoSchedule"
+
+  # Pod affinity rules
+  affinity: {}
+
+  # Priority class for pods
+  priorityClassName: ""
+
+  # Timeout for resource creation (seconds)
+  kubeWaitTimeout: 300
+
+# ============================================================================
+# SOURCE FILES CONFIGURATION
+# ============================================================================
+# These paths are used by the update-templates.sh script to sync source files
+# into the Helm chart templates
+sourceFiles:
+  # Path to init-db.sql (relative to project root)
+  initDbSql: init-db.sql
+
+  # Path to collector.sh (relative to project root)
+  collectorScript: collector.sh
+
+  # Path to Grafana provisioning directory (relative to project root)
+  grafanaProvisioning: grafana/provisioning
+
+  # Path to Grafana dashboards directory (relative to project root)
+  grafanaDashboards: grafana/dashboards

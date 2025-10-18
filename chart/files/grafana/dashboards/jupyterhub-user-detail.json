@@ -1,0 +1,566 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "TimescaleDB",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Field"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": false
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT \n  'Full Name' as \"Field\",\n  full_name as \"Value\"\nFROM users \nWHERE email = '$user'\nUNION ALL\nSELECT \n  'Email' as \"Field\",\n  email as \"Value\"\nFROM users \nWHERE email = '$user';",
+          "refId": "A"
+        }
+      ],
+      "title": "User",
+      "transparent": true,
+      "type": "table"
+    },
+    {
+      "datasource": "TimescaleDB",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 6,
+        "y": 0
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT \n  COALESCE(SUM(runtime_hours), 0) AS \"Total Hours\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND session_start >= $__timeFrom()\n  AND session_end <= $__timeTo();",
+          "refId": "A"
+        }
+      ],
+      "title": "Total (hours)",
+      "type": "stat"
+    },
+    {
+      "datasource": "TimescaleDB",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 0
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT \n  COALESCE(COUNT(*), 0) AS \"Total Sessions\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND session_start >= $__timeFrom()\n  AND session_end <= $__timeTo();",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Sessions",
+      "type": "stat"
+    },
+    {
+      "datasource": "TimescaleDB",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 0
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT \n  COALESCE(COUNT(DISTINCT container_base), 0) AS \"Applications Used\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND session_start >= $__timeFrom()\n  AND session_end <= $__timeTo();",
+          "refId": "A"
+        }
+      ],
+      "title": "Applications Used",
+      "type": "stat"
+    },
+    {
+      "datasource": "TimescaleDB",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 10,
+        "y": 0
+      },
+      "id": 8,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT \n  COALESCE(SUM(runtime_hours), 0) AS \"GPU Hours\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND node_name NOT ILIKE '%cpu%'\n  AND session_start >= $__timeFrom()\n  AND session_end <= $__timeTo();",
+          "refId": "A"
+        }
+      ],
+      "title": "GPU (hours)",
+      "type": "stat"
+    },
+    {
+      "datasource": "TimescaleDB",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 14,
+        "y": 0
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT \n  COALESCE(SUM(runtime_hours), 0) AS \"CPU Hours\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND node_name ILIKE '%cpu%'\n  AND session_start >= $__timeFrom()\n  AND session_end <= $__timeTo();",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU (hours)",
+      "type": "stat"
+    },
+    {
+      "datasource": "TimescaleDB",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Runtime (Hours)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "auto"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Session Start"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Session End"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Node"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Container Image"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Session Start"
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  session_start AS \"Session Start\",\n  session_end AS \"Session End\",\n  runtime_hours AS \"Runtime (Hours)\",\n  node_name AS \"Node\",\n  container_base || ':' || container_version AS \"Container Image\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND session_start >= $__timeFrom()\n  AND session_end <= $__timeTo()\nORDER BY session_start DESC;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": ["value"],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "User Sessions for $user",
+      "type": "table"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["jupyterhub", "user-detail"],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "datasource": "TimescaleDB",
+        "definition": "SELECT email FROM users ORDER BY email",
+        "hide": 0,
+        "includeAll": false,
+        "label": "User",
+        "multi": false,
+        "name": "user",
+        "options": [],
+        "query": "SELECT email FROM users ORDER BY email",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5m", "15m", "30m", "1h"]
+  },
+  "timezone": "browser",
+  "title": "JupyterHub User Detail",
+  "uid": "jupyterhub-user-detail",
+  "version": 1,
+  "weekStart": ""
+}

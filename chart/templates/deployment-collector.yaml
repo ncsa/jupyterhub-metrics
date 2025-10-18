@@ -1,0 +1,87 @@
+{{- if .Values.collector.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-collector
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "jupyterhub-metrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: collector
+  template:
+    metadata:
+      labels:
+        {{- include "jupyterhub-metrics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: collector
+    spec:
+      serviceAccountName: {{ include "jupyterhub-metrics.serviceAccountName" . }}
+      {{- if .Values.collector.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.collector.podSecurityContext | nindent 8 }}
+      {{- end }}
+      {{- if .Values.advanced.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.advanced.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.advanced.affinity }}
+      affinity:
+        {{- toYaml .Values.advanced.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.advanced.tolerations }}
+      tolerations:
+        {{- toYaml .Values.advanced.tolerations | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: collector
+          image: "{{ .Values.collector.image.repository }}:{{ .Values.collector.image.tag }}"
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              apk add --no-cache bash curl jq postgresql-client ca-certificates
+              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+              chmod +x kubectl && mv kubectl /usr/local/bin/
+              exec /bin/bash /scripts/collector.sh
+          env:
+            - name: DB_HOST
+              value: {{ include "jupyterhub-metrics.db.host" . }}
+            - name: DB_PORT
+              value: {{ include "jupyterhub-metrics.db.port" . }}
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: POSTGRES_DB
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.db.passwordKey" . }}
+            - name: NAMESPACE
+              value: {{ .Values.jupyterhub.namespace | quote }}
+            - name: COLLECTION_INTERVAL
+              value: {{ .Values.collector.interval | quote }}
+            - name: POD_LABEL_SELECTOR
+              value: {{ .Values.jupyterhub.podLabelSelector | quote }}
+          resources:
+            {{- toYaml .Values.collector.resources | nindent 12 }}
+          volumeMounts:
+            - name: collector-script
+              mountPath: /scripts
+      volumes:
+        - name: collector-script
+          configMap:
+            name: {{ include "jupyterhub-metrics.fullname" . }}-collector-script
+            defaultMode: 0755
+{{- end }}

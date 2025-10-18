@@ -1,0 +1,18 @@
+{{- if .Values.rbac.create }}
+apiVersion: {{ include "jupyterhub-metrics.rbac.apiVersion" . }}
+kind: ClusterRole
+metadata:
+  name: {{ .Values.rbac.clusterRoleName }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list"]
+{{- end }}

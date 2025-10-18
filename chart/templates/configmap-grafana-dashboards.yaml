@@ -1,0 +1,14 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-grafana-dashboards
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+data:
+{{ range $path, $_ := .Files.Glob "files/grafana/dashboards/*.json" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{ end }}
+{{- end }}

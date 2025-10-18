@@ -1,0 +1,42 @@
+1. Get the Grafana URL by running these commands:
+{{- if .Values.ingress.enabled }}
+  Grafana is available at: https://{{ .Values.ingress.host }}
+{{- else }}
+  export POD_NAME=$(kubectl get pods --namespace {{ include "jupyterhub-metrics.namespace" . }} -l "app.kubernetes.io/name=jupyterhub-metrics,app.kubernetes.io/component=grafana" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ include "jupyterhub-metrics.namespace" . }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ include "jupyterhub-metrics.namespace" . }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+2. Get your Grafana login credentials:
+  Username: {{ .Values.grafana.adminUser }}
+  Password: kubectl get secret --namespace {{ include "jupyterhub-metrics.namespace" . }} {{ include "jupyterhub-metrics.fullname" . }}-secrets -o jsonpath="{.data.GF_SECURITY_ADMIN_PASSWORD}" | base64 --decode; echo
+
+3. Check the status of your deployment:
+  kubectl get pods --namespace {{ include "jupyterhub-metrics.namespace" . }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+4. View the deployment logs:
+  Collector:
+    kubectl logs --namespace {{ include "jupyterhub-metrics.namespace" . }} -l "app.kubernetes.io/component=collector" -f
+
+  Grafana:
+    kubectl logs --namespace {{ include "jupyterhub-metrics.namespace" . }} -l "app.kubernetes.io/component=grafana" -f
+
+  TimescaleDB:
+    kubectl logs --namespace {{ include "jupyterhub-metrics.namespace" . }} -l "app.kubernetes.io/component=timescaledb" -f
+
+5. Wait for the database initialization hook to complete:
+  kubectl get jobs --namespace {{ include "jupyterhub-metrics.namespace" . }}
+  kubectl logs --namespace {{ include "jupyterhub-metrics.namespace" . }} job/{{ include "jupyterhub-metrics.fullname" . }}-init-db -f
+
+6. Access the database directly (if needed):
+  kubectl port-forward --namespace {{ include "jupyterhub-metrics.namespace" . }} svc/{{ .Values.timescaledb.serviceName }} 5432:5432 &
+  PGPASSWORD=$(kubectl get secret --namespace {{ include "jupyterhub-metrics.namespace" . }} {{ include "jupyterhub-metrics.fullname" . }}-secrets -o jsonpath="{.data.POSTGRES_PASSWORD}" | base64 --decode)
+  psql -h localhost -U {{ .Values.db.user }} -d {{ .Values.db.name }}
+
+7. For more information, visit the documentation:
+  README: chart/README.md
+  Architecture: HELM_CHART.md
+  Security: SECURITY.md
+
+Happy monitoring! 📊

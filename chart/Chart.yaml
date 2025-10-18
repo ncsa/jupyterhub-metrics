@@ -1,0 +1,31 @@
+apiVersion: v2
+name: jupyterhub-metrics
+description: A Helm chart for JupyterHub container metrics monitoring with TimescaleDB and Grafana
+type: application
+
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - jupyterhub
+  - metrics
+  - monitoring
+  - timescaledb
+  - grafana
+  - kubernetes
+
+home: https://github.com/ncsa/jupyterhub-metrics
+sources:
+  - https://github.com/ncsa/jupyterhub-metrics
+
+maintainers:
+  - name: NCSA
+    url: https://www.ncsa.illinois.edu
+
+dependencies: []
+
+# Chart information
+icon: https://raw.githubusercontent.com/grafana/grafana/master/public/img/grafana_icon.svg
+
+# Kubeversion compatibility
+kubeVersion: ">=1.20"

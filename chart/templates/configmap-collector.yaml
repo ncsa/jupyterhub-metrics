@@ -1,0 +1,12 @@
+{{- if .Values.collector.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "jupyterhub-metrics.fullname" . }}-collector-script
+  namespace: {{ include "jupyterhub-metrics.namespace" . }}
+  labels:
+    {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
+data:
+  collector.sh: |
+{{ .Files.Get "files/collector.sh" | indent 4 }}
+{{- end }}
