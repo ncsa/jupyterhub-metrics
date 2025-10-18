@@ -87,7 +87,6 @@
         }
       ],
       "title": "User",
-      "transparent": true,
       "type": "table"
     },
     {
