@@ -1186,7 +1186,7 @@
         "sortBy": [
           {
             "desc": true,
-            "displayName": "Total Containers"
+            "displayName": "Total Applications"
           }
         ]
       },
@@ -1224,7 +1224,7 @@
   "refresh": "5m",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["jupyterhub", "containers", "kubernetes"],
+  "tags": ["jupyterhub", "applications", "kubernetes"],
   "templating": {
     "list": []
   },

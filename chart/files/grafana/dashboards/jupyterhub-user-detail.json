@@ -456,7 +456,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Container Image"
+              "options": "Application Image"
             },
             "properties": [
               {
@@ -497,7 +497,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  session_start AS \"Session Start\",\n  session_end AS \"Session End\",\n  runtime_hours AS \"Runtime (Hours)\",\n  node_name AS \"Node\",\n  container_base || ':' || container_version AS \"Container Image\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND session_start >= $__timeFrom()\n  AND session_end <= $__timeTo()\nORDER BY session_start DESC;",
+          "rawSql": "SELECT\n  session_start AS \"Session Start\",\n  session_end AS \"Session End\",\n  runtime_hours AS \"Runtime (Hours)\",\n  node_name AS \"Node\",\n  container_base || ':' || container_version AS \"Application Image\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND session_start >= $__timeFrom()\n  AND session_end <= $__timeTo()\nORDER BY session_start DESC;",
           "refId": "A",
           "select": [
             [
