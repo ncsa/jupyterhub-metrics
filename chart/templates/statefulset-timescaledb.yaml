@@ -70,7 +70,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+                - pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
             initialDelaySeconds: {{ .Values.timescaledb.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.timescaledb.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.timescaledb.livenessProbe.timeoutSeconds }}
@@ -80,7 +80,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+                - pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
             initialDelaySeconds: {{ .Values.timescaledb.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.timescaledb.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.timescaledb.readinessProbe.timeoutSeconds }}

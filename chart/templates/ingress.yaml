@@ -10,7 +10,7 @@ metadata:
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
-    {{- if .Values.ingress.tls.certManagerIssuer }}
+    {{- if $.Values.ingress.tls.certManagerIssuer }}
     cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.certManagerIssuer }}
     {{- end }}
   {{- end }}

@@ -5,7 +5,6 @@ metadata:
   name: {{ include "jupyterhub-metrics.namespace" . }}
   labels:
     {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
-  annotations:
     # Pod Security Standards (for Kubernetes 1.25+)
     # Enforce the configured security standard level
     pod-security.kubernetes.io/enforce: {{ .Values.security.podSecurityStandard }}
