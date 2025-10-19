@@ -25,6 +25,11 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_INSTALL_PLUGINS: grafana-clock-panel
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
     ports:
       - "${GRAFANA_PORT}:3000"
     volumes:
