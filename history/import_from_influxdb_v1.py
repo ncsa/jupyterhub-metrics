@@ -64,37 +64,110 @@ def is_in_blocked_time_window(minutes_before: int = 1, minutes_after: int = 2) -
     return False
 
 
+def draw_waiting_screen(stdscr, minutes_before: int, minutes_after: int):
+    """Draw a centered waiting screen for blocked time window"""
+    try:
+        stdscr.clear()
+        height, width = stdscr.getmaxyx()
+
+        now = datetime.now(timezone.utc)
+        current_minute = now.minute
+
+        # Calculate time until safe window
+        if current_minute <= minutes_after:
+            wait_minutes = minutes_after - current_minute + 1
+            seconds_until_safe = (wait_minutes * 60) - now.second
+        else:  # current_minute >= (60 - minutes_before)
+            wait_minutes = (60 - current_minute) + minutes_after + 1
+            seconds_until_safe = (wait_minutes * 60) - now.second
+
+        # Format countdown
+        minutes_left = seconds_until_safe // 60
+        seconds_left = seconds_until_safe % 60
+
+        # Prepare text lines
+        lines = [
+            "",
+            "═" * min(70, width - 4),
+            "  ⚠️  BLOCKED TIME WINDOW",
+            "═" * min(70, width - 4),
+            "",
+            f"  Import is paused to avoid conflicts with scheduled tasks",
+            f"  Blocked window: :{60 - minutes_before:02d} to :{minutes_after:02d}",
+            "",
+            f"  Current time:   {now.strftime('%H:%M:%S UTC')}",
+            f"  Current minute: :{current_minute:02d}",
+            "",
+            f"  Time until safe window: {minutes_left}m {seconds_left}s",
+            "",
+            "  Checking every 5 seconds...",
+            "",
+            "═" * min(70, width - 4),
+        ]
+
+        # Center and draw each line
+        start_y = max(2, (height - len(lines)) // 2)
+        for idx, line in enumerate(lines):
+            y = start_y + idx
+            if y < height - 1:
+                x = max(0, (width - len(line)) // 2)
+                try:
+                    stdscr.addstr(y, x, line[: width - 1])
+                except:
+                    pass
+
+        stdscr.refresh()
+    except:
+        # If curses fails, silently continue
+        pass
+
+
 def wait_for_safe_time_window(minutes_before: int = 1, minutes_after: int = 2):
     """
     Wait until we're outside the blocked time window.
+    Uses curses for a nice countdown display.
 
     Args:
         minutes_before: Minutes before the hour to block (default: 1)
         minutes_after: Minutes after the hour to block (default: 2)
     """
-    while is_in_blocked_time_window(minutes_before, minutes_after):
-        now = datetime.now(timezone.utc)
-        current_minute = now.minute
 
-        # Calculate how many minutes until the safe window
-        if current_minute <= minutes_after:
-            wait_minutes = minutes_after - current_minute + 1
-        else:  # current_minute >= (60 - minutes_before)
-            wait_minutes = (60 - current_minute) + minutes_after + 1
+    def wait_with_display(stdscr=None):
+        while is_in_blocked_time_window(minutes_before, minutes_after):
+            if stdscr:
+                # Use curses display
+                draw_waiting_screen(stdscr, minutes_before, minutes_after)
+            else:
+                # Fallback to simple print
+                now = datetime.now(timezone.utc)
+                current_minute = now.minute
 
-        print(
-            f"⏳ Currently in blocked time window (minute {current_minute} of the hour)"
-        )
-        print(
-            f"   Import cannot run from :{60 - minutes_before:02d} to :{minutes_after:02d}"
-        )
-        print(
-            f"   Waiting approximately {wait_minutes} minute(s) until safe to proceed..."
-        )
-        print(f"   Current time: {now.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+                # Calculate how many minutes until the safe window
+                if current_minute <= minutes_after:
+                    wait_minutes = minutes_after - current_minute + 1
+                else:  # current_minute >= (60 - minutes_before)
+                    wait_minutes = (60 - current_minute) + minutes_after + 1
 
-        # Sleep for 30 seconds and check again
-        time.sleep(30)
+                print(
+                    f"⏳ Blocked time window (minute :{current_minute:02d}) - waiting ~{wait_minutes}m until :{minutes_after + 1:02d}",
+                    end="\r",
+                )
+
+            # Sleep for 5 seconds and check again
+            time.sleep(5)
+
+        # Clear the display when done
+        if stdscr:
+            stdscr.clear()
+            stdscr.refresh()
+        else:
+            print()  # Clear the line
+
+    # Try to use curses, fall back to simple display if it fails
+    try:
+        curses.wrapper(wait_with_display)
+    except:
+        wait_with_display(None)
 
 
 def parse_args():
@@ -534,6 +607,157 @@ def insert_records(conn, records: List[tuple], batch_size: int, silent: bool = F
         cursor.close()
 
 
+def populate_users_table(conn, start_time: datetime, end_time: datetime):
+    """
+    Populate the users table from container_observations for the imported time range.
+    Updates user_id, full_name, and first_seen/last_seen timestamps.
+    """
+    print("\n=== Populating Users Table ===")
+
+    cursor = conn.cursor()
+
+    try:
+        # Get count before
+        cursor.execute("SELECT COUNT(*) FROM users")
+        users_before = cursor.fetchone()[0]
+
+        # Upsert users from container_observations
+        # Extract user_id from pod_name (jupyter-{user_id}-...)
+        # Group by user_email only to avoid conflicts
+        upsert_sql = """
+        INSERT INTO users (email, user_id, full_name, first_seen, last_seen)
+        SELECT
+            user_email,
+            CASE
+                WHEN MIN(pod_name) LIKE 'jupyter-%%' THEN
+                    regexp_replace(substring(MIN(pod_name) from 9), '-[^-]+$$', '')
+                ELSE 'unknown'
+            END AS user_id,
+            COALESCE(
+                NULLIF(MAX(user_name), 'unknown'),
+                NULLIF(MAX(user_name), ''),
+                split_part(user_email, '@', 1)
+            ) AS full_name,
+            MIN(timestamp) AS first_seen,
+            MAX(timestamp) AS last_seen
+        FROM container_observations
+        WHERE timestamp >= %s AND timestamp <= %s
+        GROUP BY user_email
+        ON CONFLICT (email) DO UPDATE SET
+            user_id = EXCLUDED.user_id,
+            full_name = COALESCE(
+                NULLIF(users.full_name, ''),
+                NULLIF(EXCLUDED.full_name, ''),
+                split_part(EXCLUDED.email, '@', 1)
+            ),
+            first_seen = LEAST(users.first_seen, EXCLUDED.first_seen),
+            last_seen = GREATEST(users.last_seen, EXCLUDED.last_seen)
+        """
+
+        cursor.execute(upsert_sql, (start_time, end_time))
+        conn.commit()
+
+        # Get count after
+        cursor.execute("SELECT COUNT(*) FROM users")
+        users_after = cursor.fetchone()[0]
+
+        print(f"✓ Users table updated")
+        print(f"  Users before: {users_before:,}")
+        print(f"  Users after: {users_after:,}")
+        print(f"  New users: {users_after - users_before:,}")
+
+    except Exception as e:
+        conn.rollback()
+        print(f"ERROR populating users table: {e}")
+        raise
+    finally:
+        cursor.close()
+
+
+def refresh_materialized_views(conn):
+    """
+    Refresh the user_sessions materialized view after data import.
+    Uses CONCURRENTLY to allow concurrent reads during refresh.
+    """
+    print("\n=== Refreshing Materialized Views ===")
+
+    cursor = conn.cursor()
+
+    try:
+        print("Refreshing user_sessions view (this may take a few minutes)...")
+        start_time = time.time()
+
+        # Use CONCURRENTLY to avoid blocking reads
+        cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY user_sessions")
+        conn.commit()
+
+        elapsed = time.time() - start_time
+
+        # Get row count
+        cursor.execute("SELECT COUNT(*) FROM user_sessions")
+        session_count = cursor.fetchone()[0]
+
+        print(f"✓ user_sessions view refreshed in {elapsed:.1f}s")
+        print(f"  Total sessions: {session_count:,}")
+
+    except Exception as e:
+        conn.rollback()
+        print(f"ERROR refreshing materialized views: {e}")
+        raise
+    finally:
+        cursor.close()
+
+
+def refresh_continuous_aggregates(conn, start_time: datetime, end_time: datetime):
+    """
+    Manually refresh continuous aggregates for the imported time range.
+    This ensures hourly stats are immediately available without waiting for the schedule.
+    """
+    print("\n=== Refreshing Continuous Aggregates ===")
+
+    # Save original autocommit state
+    old_autocommit = conn.autocommit
+
+    try:
+        # Commit any pending transaction before changing autocommit mode
+        # This prevents "set_session cannot be used inside a transaction" error
+        if not old_autocommit:
+            conn.commit()
+
+        # Enable autocommit - refresh_continuous_aggregate() cannot run inside a transaction block
+        conn.autocommit = True
+
+        cursor = conn.cursor()
+
+        try:
+            # Refresh hourly_node_stats
+            print("Refreshing hourly_node_stats...")
+            cursor.execute(
+                "CALL refresh_continuous_aggregate('hourly_node_stats', %s, %s)",
+                (start_time, end_time),
+            )
+            print("✓ hourly_node_stats refreshed")
+
+            # Refresh hourly_image_stats
+            print("Refreshing hourly_image_stats...")
+            cursor.execute(
+                "CALL refresh_continuous_aggregate('hourly_image_stats', %s, %s)",
+                (start_time, end_time),
+            )
+            print("✓ hourly_image_stats refreshed")
+
+        finally:
+            cursor.close()
+
+    except Exception as e:
+        print(f"WARNING: Could not refresh continuous aggregates: {e}")
+        print("  Note: Continuous aggregates will be updated automatically on schedule")
+        # Don't raise - this is not critical
+    finally:
+        # Restore original autocommit state
+        conn.autocommit = old_autocommit
+
+
 def draw_progress(
     stdscr,
     i,
@@ -549,22 +773,45 @@ def draw_progress(
         stdscr.clear()
         height, width = stdscr.getmaxyx()
 
+        # Check if we're in a blocked time window
+        now = datetime.now(timezone.utc)
+        in_blocked_window = is_in_blocked_time_window()
+        current_minute = now.minute
+
         # Calculate progress
         progress_pct = (i / total_windows) * 100
         elapsed = time.time() - start_time
         avg_time_per_window = elapsed / i if i > 0 else 0
         remaining_windows = total_windows - i
-        eta_seconds = avg_time_per_window * remaining_windows
 
-        # Format ETA
-        if eta_seconds < 60:
-            eta_str = f"{int(eta_seconds)}s"
-        elif eta_seconds < 3600:
-            eta_str = f"{int(eta_seconds / 60)}m {int(eta_seconds % 60)}s"
+        # Calculate ETA or blocked window time
+        if in_blocked_window:
+            # Calculate time until safe window
+            if current_minute <= 2:  # minutes_after
+                wait_minutes = 2 - current_minute + 1
+                seconds_until_safe = (wait_minutes * 60) - now.second
+            else:  # current_minute >= 59 (60 - minutes_before)
+                wait_minutes = (60 - current_minute) + 2 + 1
+                seconds_until_safe = (wait_minutes * 60) - now.second
+
+            minutes_left = seconds_until_safe // 60
+            seconds_left = seconds_until_safe % 60
+            eta_str = f"Paused - blocked until :{(current_minute + wait_minutes) % 60:02d} ({minutes_left}m {seconds_left}s)"
+            status_icon = "⏸"
+            status_text = "PAUSED - Blocked Time Window"
         else:
-            hours = int(eta_seconds / 3600)
-            minutes = int((eta_seconds % 3600) / 60)
-            eta_str = f"{hours}h {minutes}m"
+            eta_seconds = avg_time_per_window * remaining_windows
+            # Format ETA
+            if eta_seconds < 60:
+                eta_str = f"{int(eta_seconds)}s"
+            elif eta_seconds < 3600:
+                eta_str = f"{int(eta_seconds / 60)}m {int(eta_seconds % 60)}s"
+            else:
+                hours = int(eta_seconds / 3600)
+                minutes = int((eta_seconds % 3600) / 60)
+                eta_str = f"{hours}h {minutes}m"
+            status_icon = "▶"
+            status_text = "Importing"
 
         # Create progress bar
         bar_width = min(60, width - 10)
@@ -575,7 +822,7 @@ def draw_progress(
         lines = [
             "",
             "═" * min(70, width - 4),
-            f"  JupyterHub Metrics Import",
+            f"  {status_icon} JupyterHub Metrics Import - {status_text}",
             "═" * min(70, width - 4),
             "",
             f"  Progress: {progress_pct:5.1f}%",
@@ -585,11 +832,31 @@ def draw_progress(
             f"  Retrieved:  {records_count:,} records",
             f"  Inserted:   {inserted_count:,} records",
             "",
-            f"  Current:    {window_start.strftime('%Y-%m-%d %H:%M')} - {window_end.strftime('%H:%M')}",
-            f"  ETA:        {eta_str}",
-            "",
-            "═" * min(70, width - 4),
         ]
+
+        # Add current window or blocked message
+        if in_blocked_window:
+            lines.extend(
+                [
+                    f"  Status:     ⚠️  Waiting for safe window (:59-:02 blocked)",
+                    f"  Current:    {now.strftime('%Y-%m-%d %H:%M:%S UTC')} (minute :{current_minute:02d})",
+                    f"  ETA:        {eta_str}",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    f"  Current:    {window_start.strftime('%Y-%m-%d %H:%M')} - {window_end.strftime('%H:%M')}",
+                    f"  ETA:        {eta_str}",
+                ]
+            )
+
+        lines.extend(
+            [
+                "",
+                "═" * min(70, width - 4),
+            ]
+        )
 
         # Center and draw each line
         start_y = max(2, (height - len(lines)) // 2)
@@ -634,20 +901,16 @@ def main():
 
     # Check if we're in a blocked time window (unless explicitly skipped)
     if not args.skip_time_check:
+        now = datetime.now(timezone.utc)
         if is_in_blocked_time_window():
-            print("⚠️  WARNING: Currently in blocked time window!")
-            print(
-                "   Import is blocked 5 minutes before and after the top of each hour"
-            )
-            print("   (from :55 to :05) to avoid conflicts with other processes.\n")
-            wait_for_safe_time_window()
-            print("✓ Now in safe time window. Proceeding with import...\n")
+            print(f"⚠️  Currently in blocked time window (minute :{now.minute:02d})")
+            print("   Import will pause during blocked windows (:59-:02)")
+            print("   to avoid conflicts with scheduled tasks.\n")
         else:
-            now = datetime.now(timezone.utc)
             print(
                 f"✓ Time window check passed (current time: {now.strftime('%H:%M UTC')})"
             )
-            print("  Import can proceed safely.\n")
+            print("  Import will auto-pause during blocked windows (:59-:02).\n")
     else:
         print("⚠️  Skipping time window check (--skip-time-check flag enabled)\n")
 
@@ -718,6 +981,24 @@ def main():
 
         try:
             for i, (window_start, window_end) in enumerate(windows, 1):
+                # Check if we're in blocked time window and wait if needed
+                if not args.skip_time_check:
+                    while is_in_blocked_time_window():
+                        # Update display to show we're waiting
+                        if stdscr:
+                            draw_progress(
+                                stdscr,
+                                i,
+                                len(windows),
+                                len(all_records),
+                                total_inserted,
+                                window_start,
+                                window_end,
+                                start_time,
+                            )
+                        # Wait 5 seconds before checking again
+                        time.sleep(5)
+
                 # Convert datetime back to InfluxQL format for this window
                 start_influx = f"'{window_start.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
                 stop_influx = f"'{window_end.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
@@ -796,8 +1077,7 @@ def main():
         sys.exit(1)
     finally:
         influx_client.close()
-        if not args.dry_run:
-            pg_conn.close()
+        # Note: Don't close pg_conn here - we need it for post-import processing
 
     if not all_records:
         print("\nNo records found in InfluxDB for the specified criteria")
@@ -806,6 +1086,8 @@ def main():
         print("2. Verify the namespace is correct")
         print("3. Try a longer time range")
         print(f"4. Check pod filter: --pod-filter='{args.pod_filter}'")
+        if not args.dry_run:
+            pg_conn.close()
         return
 
     print(f"\n\n✓ Retrieved total of {len(all_records):,} records from InfluxDB")
@@ -845,6 +1127,25 @@ def main():
 
     print(f"  = Actually inserted:          {total_inserted:,}")
 
+    # Post-import processing: populate users table and refresh views
+    if total_inserted > 0:
+        try:
+            # Populate users table from imported observations
+            populate_users_table(pg_conn, start_dt, stop_dt)
+
+            # Refresh materialized views
+            refresh_materialized_views(pg_conn)
+
+            # Refresh continuous aggregates for imported time range
+            refresh_continuous_aggregates(pg_conn, start_dt, stop_dt)
+
+        except Exception as e:
+            print(f"\n⚠️  WARNING: Post-import processing had errors: {e}")
+            print(
+                "   Data was imported successfully, but views may need manual refresh"
+            )
+
+    print("\n=== All Processing Complete ===")
     print("\nVerify in PostgreSQL:")
     print(f'  docker exec jupyterhub-timescaledb psql -U {PG_USER} -d {PG_DB} -c "')
     print(f"    SELECT COUNT(*) as total_rows, ")
@@ -852,6 +1153,21 @@ def main():
     print(f"           MIN(timestamp) as earliest,")
     print(f"           MAX(timestamp) as latest")
     print(f'    FROM container_observations;"')
+    print()
+    print(f'  docker exec jupyterhub-timescaledb psql -U {PG_USER} -d {PG_DB} -c "')
+    print(f"    SELECT COUNT(*) as total_users,")
+    print(f"           MIN(first_seen) as earliest_user,")
+    print(f"           MAX(last_seen) as latest_activity")
+    print(f'    FROM users;"')
+    print()
+    print(f'  docker exec jupyterhub-timescaledb psql -U {PG_USER} -d {PG_DB} -c "')
+    print(f"    SELECT COUNT(*) as total_sessions,")
+    print(f"           SUM(runtime_hours) as total_runtime_hours")
+    print(f'    FROM user_sessions;"')
+
+    # Close PostgreSQL connection
+    if not args.dry_run:
+        pg_conn.close()
 
 
 if __name__ == "__main__":

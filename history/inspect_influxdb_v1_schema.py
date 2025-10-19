@@ -259,6 +259,15 @@ def get_data_time_range(
         "latest": f'SELECT "{field_name}" FROM "{measurement}" {where_clause} ORDER BY time DESC LIMIT 1',
     }
 
+    # Show filters being applied
+    filter_info = []
+    if namespace:
+        filter_info.append(f"namespace='{namespace}'")
+    if cluster:
+        filter_info.append(f"cluster='{cluster}'")
+    if filter_info:
+        print(f"  Filters: {', '.join(filter_info)}")
+
     results = {}
 
     for query_type, query in queries.items():
@@ -313,12 +322,9 @@ def find_jupyterhub_pods(
     """Search for JupyterHub-related pods"""
     print(f"\n=== SEARCHING FOR JUPYTERHUB PODS ===")
 
-    # Try different common measurement names
+    # Only check kubernetes_pod_container measurement
     measurements_to_try = [
         "kubernetes_pod_container",
-        "kubernetes_pod",
-        "kube_pod_container_status_running",
-        "kube_pod_info",
     ]
 
     for measurement in measurements_to_try:
@@ -457,24 +463,6 @@ def main():
                 args.cluster,
                 args.pod_filter,
             )
-
-        # Inspect other kubernetes measurements
-        if measurements:
-            print("\n=== INSPECTING OTHER KUBERNETES MEASUREMENTS ===")
-            for measurement in measurements[:3]:
-                if measurement != jupyterhub_measurement:
-                    get_data_time_range(
-                        client, measurement, args.namespace, args.cluster
-                    )
-                    inspect_measurement(client, measurement)
-                    get_sample_data(
-                        client,
-                        measurement,
-                        args.namespace,
-                        args.hours,
-                        args.cluster,
-                        args.pod_filter,
-                    )
 
         print("\n=== RECOMMENDATIONS ===")
         if jupyterhub_measurement:
