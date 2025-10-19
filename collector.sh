@@ -20,6 +20,7 @@ DB_USER="${DB_USER:-metrics_user}"
 DB_PASSWORD="${DB_PASSWORD:-}"
 COLLECTION_INTERVAL="${COLLECTION_INTERVAL:-300}"
 NAMESPACE="${NAMESPACE:-jupyterhub}"
+KUBECTL_CONTEXT="${KUBECTL_CONTEXT:-}"
 
 # Validate required variables are set
 if [[ -z "$DB_PASSWORD" ]]; then
@@ -55,9 +56,15 @@ collect_metrics() {
     local temp_file=$(mktemp)
     local users_file=$(mktemp)
 
-    # Fetch pod data using in-cluster authentication (no context needed)
-    # kubectl will automatically use the service account token
-    kubectl get po -o json -n "$NAMESPACE" \
+    # Fetch pod data using kubectl
+    # Use --context flag if KUBECTL_CONTEXT is set (for local development)
+    # Otherwise use in-cluster authentication (service account token)
+    local kubectl_cmd="kubectl"
+    if [[ -n "$KUBECTL_CONTEXT" ]]; then
+        kubectl_cmd="kubectl --context=$KUBECTL_CONTEXT"
+    fi
+
+    $kubectl_cmd get po -o json -n "$NAMESPACE" \
         -l component=singleuser-server 2>/dev/null | \
     jq -r --arg now "$now" --arg ts "$timestamp" '
         [.items[] |
@@ -84,8 +91,9 @@ collect_metrics() {
     ' > "$temp_file"
 
     # Split combined output into observations and users files
-    grep -E "^\d{4}-\d{2}-\d{2}" "$temp_file" > "${temp_file}.obs"
-    grep -v -E "^\d{4}-\d{2}-\d{2}" "$temp_file" > "$users_file"
+    # Use POSIX character classes [[:digit:]] instead of \d for compatibility
+    grep -E "^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}" "$temp_file" > "${temp_file}.obs" || true
+    grep -v -E "^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}" "$temp_file" > "$users_file" || true
     mv "${temp_file}.obs" "$temp_file"
 
     local count=$(wc -l < "$temp_file")
@@ -167,7 +175,11 @@ main() {
     log "  DB_USER: $DB_USER"
     log "  NAMESPACE: $NAMESPACE"
     log "  COLLECTION_INTERVAL: ${COLLECTION_INTERVAL}s"
-    log "  Using in-cluster Kubernetes authentication"
+    if [[ -n "$KUBECTL_CONTEXT" ]]; then
+        log "  KUBECTL_CONTEXT: $KUBECTL_CONTEXT"
+    else
+        log "  Using in-cluster Kubernetes authentication"
+    fi
 
     wait_for_db
 
