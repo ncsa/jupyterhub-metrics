@@ -92,7 +92,8 @@ SELECT add_continuous_aggregate_policy('hourly_node_stats',
     schedule_interval => INTERVAL '1 hour');
 
 -- Add column comments for hourly_node_stats
-COMMENT ON MATERIALIZED VIEW hourly_node_stats IS 'Hourly aggregated statistics per Kubernetes node (automatically maintained by TimescaleDB)';
+-- Note: TimescaleDB continuous aggregates are created as views, not materialized views
+COMMENT ON VIEW hourly_node_stats IS 'Hourly aggregated statistics per Kubernetes node (automatically maintained by TimescaleDB)';
 COMMENT ON COLUMN hourly_node_stats.hour IS 'Start of the 1-hour time bucket';
 COMMENT ON COLUMN hourly_node_stats.node_name IS 'Kubernetes node name';
 COMMENT ON COLUMN hourly_node_stats.unique_users IS 'Number of distinct users with containers on this node during the hour';
@@ -118,7 +119,8 @@ SELECT add_continuous_aggregate_policy('hourly_image_stats',
     schedule_interval => INTERVAL '1 hour');
 
 -- Add column comments for hourly_image_stats
-COMMENT ON MATERIALIZED VIEW hourly_image_stats IS 'Hourly aggregated statistics per container image (automatically maintained by TimescaleDB)';
+-- Note: TimescaleDB continuous aggregates are created as views, not materialized views
+COMMENT ON VIEW hourly_image_stats IS 'Hourly aggregated statistics per container image (automatically maintained by TimescaleDB)';
 COMMENT ON COLUMN hourly_image_stats.hour IS 'Start of the 1-hour time bucket';
 COMMENT ON COLUMN hourly_image_stats.container_base IS 'Container image name without tag';
 COMMENT ON COLUMN hourly_image_stats.container_version IS 'Container image version/tag';
