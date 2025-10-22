@@ -71,50 +71,6 @@ Return the appropriate apiVersion for RBAC APIs
 {{- end }}
 
 {{/*
-Database host - internal or external
-*/}}
-{{- define "jupyterhub-metrics.db.host" -}}
-{{- if .Values.db.external }}
-{{- .Values.db.externalHost }}
-{{- else }}
-{{- printf "%s.%s.svc.cluster.local" .Values.timescaledb.serviceName .Release.Namespace }}
-{{- end }}
-{{- end }}
-
-{{/*
-Database port
-*/}}
-{{- define "jupyterhub-metrics.db.port" -}}
-{{- if .Values.db.external }}
-{{- .Values.db.externalPort }}
-{{- else }}
-{{- .Values.db.port }}
-{{- end }}
-{{- end }}
-
-{{/*
-Get database password from secret or external source
-*/}}
-{{- define "jupyterhub-metrics.db.passwordSecret" -}}
-{{- if .Values.secrets.externalSecretEnabled }}
-{{- .Values.secrets.externalSecretName }}
-{{- else }}
-{{- include "jupyterhub-metrics.fullname" . }}-secrets
-{{- end }}
-{{- end }}
-
-{{/*
-Get database password key name
-*/}}
-{{- define "jupyterhub-metrics.db.passwordKey" -}}
-{{- if .Values.secrets.externalSecretEnabled }}
-{{- .Values.secrets.externalSecretDbPasswordKey }}
-{{- else }}
-{{- print "POSTGRES_PASSWORD" }}
-{{- end }}
-{{- end }}
-
-{{/*
 Get Grafana password secret name
 */}}
 {{- define "jupyterhub-metrics.grafana.passwordSecret" -}}
@@ -141,4 +97,44 @@ Return namespace
 */}}
 {{- define "jupyterhub-metrics.namespace" -}}
 {{- .Release.Namespace }}
+{{- end }}
+
+{{/*
+TimescaleDB host
+*/}}
+{{- define "jupyterhub-metrics.timescaledb.host" -}}
+{{- if .Values.timescaledb.external.enabled }}
+{{- .Values.timescaledb.external.host }}
+{{- else }}
+{{- printf "%s-timescaledb" (include "jupyterhub-metrics.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+TimescaleDB password secret name
+*/}}
+{{- define "jupyterhub-metrics.timescaledb.passwordSecret" -}}
+{{- if .Values.secrets.externalSecretEnabled }}
+{{- .Values.secrets.externalSecretName }}
+{{- else }}
+{{- include "jupyterhub-metrics.fullname" . }}-secrets
+{{- end }}
+{{- end }}
+
+{{/*
+TimescaleDB password key name
+*/}}
+{{- define "jupyterhub-metrics.timescaledb.passwordKey" -}}
+{{- if .Values.secrets.externalSecretEnabled }}
+{{- .Values.secrets.externalSecretDbPasswordKey }}
+{{- else }}
+{{- print "POSTGRES_PASSWORD" }}
+{{- end }}
+{{- end }}
+
+{{/*
+TimescaleDB port
+*/}}
+{{- define "jupyterhub-metrics.timescaledb.port" -}}
+{{- .Values.timescaledb.database.port }}
 {{- end }}

@@ -16,37 +16,33 @@ global:
   debug: false
 
 # ============================================================================
-# DATABASE CONFIGURATION (TimescaleDB / PostgreSQL)
-# ============================================================================
-db:
-  # Database name
-  name: jupyterhub_metrics
-
-  # Database user
-  user: metrics_user
-
-  # Database password - MUST be set via --set or external secret
-  # Example: --set db.password="$(openssl rand -base64 32)"
-  password: ""
-
-  # Database host (will be constructed as timescaledb.<release-namespace>.svc.cluster.local)
-  host: timescaledb
-
-  # Database port
-  port: 5432
-
-  # Use external database instead of deploying TimescaleDB
-  # If true, specify externalHost and externalPort
-  external: false
-  externalHost: ""
-  externalPort: 5432
-
-# ============================================================================
 # TIMESCALEDB CONFIGURATION
 # ============================================================================
 timescaledb:
   # Enable TimescaleDB deployment
   enabled: true
+
+  # Database configuration
+  database:
+    # Database name
+    name: jupyterhub_metrics
+
+    # Database user
+    user: metrics_user
+
+    # Database password - MUST be set via --set or external secret
+    # Example: --set timescaledb.database.password="$(openssl rand -base64 32)"
+    password: ""
+
+    # Database port
+    port: 5432
+
+  # External database configuration
+  # Use external database instead of deploying TimescaleDB
+  external:
+    enabled: false
+    host: ""
+    port: 5432
 
   # TimescaleDB image configuration
   image:
@@ -91,6 +87,15 @@ timescaledb:
     runAsNonRoot: true
     runAsUser: 999
 
+  # Container security context
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - "ALL"
+    seccompProfile:
+      type: "RuntimeDefault"
+
 # ============================================================================
 # GRAFANA CONFIGURATION
 # ============================================================================
@@ -123,7 +128,7 @@ grafana:
   # Persistence configuration
   persistence:
     # Use PVC (true) or emptyDir (false)
-    enabled: false
+    enabled: true
     size: 5Gi
     storageClass: "" # Empty string = cluster default
     accessMode: ReadWriteOnce
@@ -156,6 +161,15 @@ grafana:
     runAsNonRoot: true
     runAsUser: 472
 
+  # Container security context
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - "ALL"
+    seccompProfile:
+      type: "RuntimeDefault"
+
 # ============================================================================
 # METRICS COLLECTOR CONFIGURATION
 # ============================================================================
@@ -167,9 +181,11 @@ collector:
   interval: "300" # 5 minutes
 
   # Collector image configuration
+  # Built and pushed by update-chart.sh
+  # Image version is automatically set to Chart.Version (from Chart.yaml)
+  # No synchronization needed - Helm uses Chart.Version directly
   image:
-    repository: alpine
-    tag: "3.19"
+    repository: ncsa/jupyterhub-metrics-collector
     pullPolicy: IfNotPresent
 
   # Resource requests and limits
@@ -185,6 +201,15 @@ collector:
   podSecurityContext:
     runAsNonRoot: true
     runAsUser: 65534
+
+  # Container security context
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - "ALL"
+    seccompProfile:
+      type: "RuntimeDefault"
 
 # ============================================================================
 # JUPYTERHUB TARGET CONFIGURATION
@@ -254,12 +279,6 @@ secrets:
 # SECURITY CONTEXT & POLICIES
 # ============================================================================
 security:
-  # Pod Security Standards enforcement level
-  # Options: baseline, restricted
-  # baseline: minimal restrictions (default Kubernetes)
-  # restricted: strong security (recommended for production)
-  podSecurityStandard: restricted
-
   # Network Policy to restrict traffic
   # If enabled, only allows traffic from Grafana to TimescaleDB and Collector to TimescaleDB
   networkPolicyEnabled: false
@@ -271,12 +290,6 @@ security:
 # ADVANCED OPTIONS
 # ============================================================================
 advanced:
-  # Namespace where to deploy the metrics system
-  namespace: jupyterhub-metrics
-
-  # Create namespace if it doesn't exist
-  createNamespace: true
-
   # Node selector for pod placement
   nodeSelector: {}
     # node-role: monitoring

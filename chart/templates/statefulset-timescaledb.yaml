@@ -8,7 +8,7 @@ metadata:
     {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: timescaledb
 spec:
-  serviceName: {{ .Values.timescaledb.serviceName }}
+  serviceName: {{ include "jupyterhub-metrics.fullname" . }}-timescaledb
   replicas: 1
   selector:
     matchLabels:
@@ -41,28 +41,35 @@ spec:
       {{- end }}
       containers:
         - name: timescaledb
+          securityContext:
+            {{- toYaml .Values.timescaledb.containerSecurityContext | nindent 12 }}
           image: "{{ .Values.timescaledb.image.repository }}:{{ .Values.timescaledb.image.tag }}"
           imagePullPolicy: {{ .Values.timescaledb.image.pullPolicy }}
           ports:
             - name: postgresql
               containerPort: 5432
               protocol: TCP
+          args:
+            - -cmax_parallel_workers=12
+            - -cmax_parallel_workers_per_gather=6
+            - -cmax_worker_processes=32
+            - -ctimescaledb.max_background_workers=16
           env:
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: POSTGRES_DB
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
-                  key: {{ include "jupyterhub-metrics.db.passwordKey" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.timescaledb.passwordKey" . }}
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           livenessProbe:
@@ -109,7 +116,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.timescaledb.serviceName }}
+  name: {{ include "jupyterhub-metrics.fullname" . }}-timescaledb
   namespace: {{ include "jupyterhub-metrics.namespace" . }}
   labels:
     {{- include "jupyterhub-metrics.labels" . | nindent 4 }}

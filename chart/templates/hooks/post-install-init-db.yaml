@@ -12,7 +12,6 @@ metadata:
   annotations:
     "helm.sh/hook": post-install
     "helm.sh/hook-weight": "0"
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 600
@@ -35,45 +34,82 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "jupyterhub-metrics.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       restartPolicy: Never
       initContainers:
         - name: wait-for-db
-          image: busybox:1.35
+          image: postgres:15-alpine
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+            runAsUser: 1001
           command:
             - /bin/sh
             - -c
             - |
-              echo "Waiting for TimescaleDB to be ready at {{ include "jupyterhub-metrics.db.host" . }}:{{ include "jupyterhub-metrics.db.port" . }}"
-              until nc -z -w 3 {{ include "jupyterhub-metrics.db.host" . }} {{ include "jupyterhub-metrics.db.port" . }}; do
+              echo "Waiting for TimescaleDB to be ready at {{ include "jupyterhub-metrics.timescaledb.host" . }}:{{ .Values.timescaledb.database.port }}"
+              until psql -c 'SELECT 1' >/dev/null 2>&1; do
                 echo "Database is unavailable - sleeping"
                 sleep 2
               done
+              sleep 10
               echo "Database is available"
-      containers:
-        - name: init-db
-          image: postgres:15-alpine
-          imagePullPolicy: IfNotPresent
           env:
             - name: PGHOST
-              value: {{ include "jupyterhub-metrics.db.host" . }}
+              value: {{ include "jupyterhub-metrics.timescaledb.host" . }}
             - name: PGPORT
-              value: {{ include "jupyterhub-metrics.db.port" . }}
+              value: {{ include "jupyterhub-metrics.timescaledb.port" . | quote }}
             - name: PGDATABASE
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: POSTGRES_DB
             - name: PGUSER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: POSTGRES_USER
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
-                  key: {{ include "jupyterhub-metrics.db.passwordKey" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.timescaledb.passwordKey" . }}
+      containers:
+        - name: init-db
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+            runAsUser: 70
+          env:
+            - name: PGHOST
+              value: {{ include "jupyterhub-metrics.timescaledb.host" . }}
+            - name: PGPORT
+              value: {{ include "jupyterhub-metrics.timescaledb.port" . | quote }}
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: POSTGRES_DB
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.timescaledb.passwordKey" . }}
           command:
             - /bin/sh
             - -c
@@ -82,10 +118,20 @@ spec:
               echo "Starting database initialization..."
 
               # Check if database exists and has tables
-              RESULT=$(psql -tc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "0")
+              RESULT=$(psql -tc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "-1")
 
               if [ "$RESULT" -gt 0 ]; then
                 echo "Database already initialized with $RESULT tables"
+                exit 0
+              fi
+              if [ "$RESULT" -gt 0 ]; then
+                echo "Database already initialized with $RESULT tables"
+                exit 0
+              fi
+              if [ "$RESULT" -lt 0 ]; then
+                echo "Error checking tables tables"
+                echo "${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}"
+                psql -tc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';"
                 exit 0
               fi
 

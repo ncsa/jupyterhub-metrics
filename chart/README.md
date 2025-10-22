@@ -26,7 +26,7 @@ helm repo update
 helm install my-release jupyterhub-metrics/jupyterhub-metrics \
   --namespace jupyterhub-metrics \
   --create-namespace \
-  --set db.password="$(openssl rand -base64 32)" \
+  --set timescaledb.database.password="$(openssl rand -base64 32)" \
   --set grafana.adminPassword="$(openssl rand -base64 32)"
 ```
 
@@ -36,7 +36,7 @@ Or from local source:
 helm install my-release ./chart \
   --namespace jupyterhub-metrics \
   --create-namespace \
-  --set db.password="$(openssl rand -base64 32)" \
+  --set timescaledb.database.password="$(openssl rand -base64 32)" \
   --set grafana.adminPassword="$(openssl rand -base64 32)"
 ```
 
@@ -72,29 +72,27 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
+| `global.timescaledbEnabled` | Enable/disable TimescaleDB component | `true` |
+| `global.grafanaEnabled` | Enable/disable Grafana component | `true` |
+| `global.collectorEnabled` | Enable/disable metrics collector component | `true` |
+| `global.ingressEnabled` | Enable/disable ingress | `false` |
 | `global.debug` | Enable debug mode | `false` |
 
-### Database Configuration
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `db.name` | Database name | `jupyterhub_metrics` |
-| `db.user` | Database username | `metrics_user` |
-| `db.password` | Database password (required) | `""` |
-| `db.port` | Database port | `5432` |
-| `db.external` | Use external database | `false` |
-| `db.externalHost` | External database hostname | `""` |
-| `db.externalPort` | External database port | `5432` |
-
-### TimescaleDB
+### TimescaleDB Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `timescaledb.enabled` | Enable TimescaleDB deployment | `true` |
+| `timescaledb.database.name` | Database name | `jupyterhub_metrics` |
+| `timescaledb.database.user` | Database username | `metrics_user` |
+| `timescaledb.database.password` | Database password (required) | `""` |
+| `timescaledb.database.port` | Database port | `5432` |
+| `timescaledb.external.enabled` | Use external database instead of deploying TimescaleDB | `false` |
+| `timescaledb.external.host` | External database hostname | `""` |
+| `timescaledb.external.port` | External database port | `5432` |
 | `timescaledb.image.repository` | TimescaleDB image repository | `timescale/timescaledb` |
 | `timescaledb.image.tag` | TimescaleDB image tag | `latest-pg15` |
 | `timescaledb.image.pullPolicy` | TimescaleDB image pull policy | `IfNotPresent` |
-| `timescaledb.serviceName` | TimescaleDB service name | `timescaledb` |
 | `timescaledb.storage.size` | Storage size | `20Gi` |
 | `timescaledb.storage.storageClass` | Storage class name | `""` |
 | `timescaledb.storage.accessMode` | Storage access mode | `ReadWriteOnce` |
@@ -110,6 +108,12 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 | `timescaledb.readinessProbe.periodSeconds` | Readiness probe period | `5` |
 | `timescaledb.readinessProbe.timeoutSeconds` | Readiness probe timeout | `3` |
 | `timescaledb.readinessProbe.failureThreshold` | Readiness probe failure threshold | `3` |
+| `timescaledb.podSecurityContext.fsGroup` | Pod fsGroup | `999` |
+| `timescaledb.podSecurityContext.runAsNonRoot` | Run as non-root user | `true` |
+| `timescaledb.podSecurityContext.runAsUser` | User ID to run as | `999` |
+| `timescaledb.containerSecurityContext.allowPrivilegeEscalation` | Allow privilege escalation | `false` |
+| `timescaledb.containerSecurityContext.capabilities.drop` | Dropped capabilities | `["ALL"]` |
+| `timescaledb.containerSecurityContext.seccompProfile.type` | Seccomp profile type | `RuntimeDefault` |
 
 ### Grafana
 
@@ -124,7 +128,7 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 | `grafana.image.pullPolicy` | Grafana image pull policy | `IfNotPresent` |
 | `grafana.port` | Grafana service port | `3000` |
 | `grafana.plugins` | List of Grafana plugins to install | `["grafana-clock-panel"]` |
-| `grafana.persistence.enabled` | Enable persistent volume for Grafana | `false` |
+| `grafana.persistence.enabled` | Enable persistent volume for Grafana | `true` |
 | `grafana.persistence.size` | Persistent volume size | `5Gi` |
 | `grafana.persistence.storageClass` | Storage class name | `""` |
 | `grafana.persistence.accessMode` | Storage access mode | `ReadWriteOnce` |
@@ -140,6 +144,12 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 | `grafana.readinessProbe.periodSeconds` | Readiness probe period | `5` |
 | `grafana.readinessProbe.timeoutSeconds` | Readiness probe timeout | `3` |
 | `grafana.readinessProbe.failureThreshold` | Readiness probe failure threshold | `3` |
+| `grafana.podSecurityContext.fsGroup` | Pod fsGroup | `472` |
+| `grafana.podSecurityContext.runAsNonRoot` | Run as non-root user | `true` |
+| `grafana.podSecurityContext.runAsUser` | User ID to run as | `472` |
+| `grafana.containerSecurityContext.allowPrivilegeEscalation` | Allow privilege escalation | `false` |
+| `grafana.containerSecurityContext.capabilities.drop` | Dropped capabilities | `["ALL"]` |
+| `grafana.containerSecurityContext.seccompProfile.type` | Seccomp profile type | `RuntimeDefault` |
 
 ### Metrics Collector
 
@@ -147,13 +157,19 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 |-----------|-------------|---------|
 | `collector.enabled` | Enable metrics collector | `true` |
 | `collector.interval` | Collection interval in seconds | `300` |
-| `collector.image.repository` | Collector base image repository | `alpine` |
-| `collector.image.tag` | Collector base image tag | `3.19` |
+| `collector.image.repository` | Collector Docker image repository | `ncsa/jupyterhub-metrics-collector` |
 | `collector.image.pullPolicy` | Collector image pull policy | `IfNotPresent` |
 | `collector.resources.requests.memory` | Memory request | `128Mi` |
 | `collector.resources.requests.cpu` | CPU request | `100m` |
 | `collector.resources.limits.memory` | Memory limit | `512Mi` |
 | `collector.resources.limits.cpu` | CPU limit | `500m` |
+| `collector.podSecurityContext.runAsNonRoot` | Run as non-root user | `true` |
+| `collector.podSecurityContext.runAsUser` | User ID to run as | `65534` |
+| `collector.containerSecurityContext.allowPrivilegeEscalation` | Allow privilege escalation | `false` |
+| `collector.containerSecurityContext.capabilities.drop` | Dropped capabilities | `["ALL"]` |
+| `collector.containerSecurityContext.seccompProfile.type` | Seccomp profile type | `RuntimeDefault` |
+
+**Note:** The collector image version is automatically set to match the chart version (from Chart.yaml). The collector image must be built and pushed before deploying the chart.
 
 ### JupyterHub Target
 
@@ -195,7 +211,6 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `security.podSecurityStandard` | Pod Security Standards level (baseline/restricted) | `restricted` |
 | `security.networkPolicyEnabled` | Enable NetworkPolicy for traffic restriction | `false` |
 | `security.podSecurityPolicyEnabled` | Enable Pod Security Policy (legacy) | `false` |
 
@@ -203,13 +218,22 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `advanced.namespace` | Namespace for deployment | `jupyterhub-metrics` |
-| `advanced.createNamespace` | Create namespace if not exists | `true` |
 | `advanced.nodeSelector` | Node selector for pod placement | `{}` |
 | `advanced.tolerations` | Pod tolerations | `[]` |
 | `advanced.affinity` | Pod affinity rules | `{}` |
 | `advanced.priorityClassName` | Priority class name | `""` |
 | `advanced.kubeWaitTimeout` | Resource creation timeout (seconds) | `300` |
+
+### Source Files Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `sourceFiles.initDbSql` | Path to init-db.sql (relative to project root) | `init-db.sql` |
+| `sourceFiles.collectorScript` | Path to collector.sh (relative to project root) | `collector.sh` |
+| `sourceFiles.grafanaProvisioning` | Path to Grafana provisioning directory | `grafana/provisioning` |
+| `sourceFiles.grafanaDashboards` | Path to Grafana dashboards directory | `grafana/dashboards` |
+
+**Note:** These paths are used by the `update-chart.sh` script to sync source files into the Helm chart templates. They are not used at runtime.
 
 ## Examples
 
@@ -219,21 +243,22 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 helm install my-release ./chart \
   --namespace jupyterhub-metrics \
   --create-namespace \
-  --set db.password="my-secure-db-password" \
+  --set timescaledb.database.password="my-secure-db-password" \
   --set grafana.adminPassword="my-secure-grafana-password"
 ```
 
-### Installation with Custom Database
+### Installation with External Database
 
 ```bash
 helm install my-release ./chart \
   --namespace jupyterhub-metrics \
   --create-namespace \
-  --set db.password="my-secure-db-password" \
-  --set grafana.adminPassword="my-secure-grafana-password" \
-  --set db.external=true \
-  --set db.externalHost="postgresql.example.com" \
-  --set db.externalPort="5432"
+  --set timescaledb.enabled=false \
+  --set timescaledb.external.enabled=true \
+  --set timescaledb.external.host="postgresql.example.com" \
+  --set timescaledb.external.port="5432" \
+  --set timescaledb.database.password="my-secure-db-password" \
+  --set grafana.adminPassword="my-secure-grafana-password"
 ```
 
 ### Installation with Ingress and TLS
@@ -242,7 +267,7 @@ helm install my-release ./chart \
 helm install my-release ./chart \
   --namespace jupyterhub-metrics \
   --create-namespace \
-  --set db.password="my-secure-db-password" \
+  --set timescaledb.database.password="my-secure-db-password" \
   --set grafana.adminPassword="my-secure-grafana-password" \
   --set ingress.enabled=true \
   --set ingress.host="metrics.example.com" \
@@ -250,15 +275,14 @@ helm install my-release ./chart \
   --set ingress.tls.certManagerIssuer="letsencrypt-prod"
 ```
 
-### Installation with Persistent Grafana Storage
+### Installation with Custom Grafana Storage
 
 ```bash
 helm install my-release ./chart \
   --namespace jupyterhub-metrics \
   --create-namespace \
-  --set db.password="my-secure-db-password" \
+  --set timescaledb.database.password="my-secure-db-password" \
   --set grafana.adminPassword="my-secure-grafana-password" \
-  --set grafana.persistence.enabled=true \
   --set grafana.persistence.size="10Gi"
 ```
 
@@ -267,13 +291,16 @@ helm install my-release ./chart \
 ```bash
 # Create values-prod.yaml
 cat > values-prod.yaml << EOF
-db:
-  password: "my-secure-database-password"
+timescaledb:
+  database:
+    password: "my-secure-database-password"
+  storage:
+    size: 100Gi
+    storageClass: fast-ssd
 grafana:
   adminPassword: "my-secure-grafana-password"
   replicas: 2
   persistence:
-    enabled: true
     size: 10Gi
 ingress:
   enabled: true
@@ -281,10 +308,6 @@ ingress:
   tls:
     enabled: true
     certManagerIssuer: letsencrypt-prod
-timescaledb:
-  storage:
-    size: 100Gi
-    storageClass: fast-ssd
 EOF
 
 helm install my-release ./chart \
@@ -301,9 +324,8 @@ For clusters with Pod Security Standards or Network Policies enabled:
 helm install my-release ./chart \
   --namespace jupyterhub-metrics \
   --create-namespace \
-  --set db.password="$(openssl rand -base64 32)" \
+  --set timescaledb.database.password="$(openssl rand -base64 32)" \
   --set grafana.adminPassword="$(openssl rand -base64 32)" \
-  --set security.podSecurityStandard=restricted \
   --set security.networkPolicyEnabled=true
 ```
 
@@ -325,11 +347,13 @@ helm upgrade my-release ./chart \
   -f values.yaml
 ```
 
-After updating source files (init-db.sql, collector.sh, dashboards), sync them into the chart:
+To upgrade with a specific chart version (ensure the collector image for that version exists):
 
 ```bash
-./update-templates.sh
-helm upgrade my-release ./chart --namespace jupyterhub-metrics
+helm upgrade my-release ./chart \
+  --namespace jupyterhub-metrics \
+  --version 1.0.0 \
+  -f values.yaml
 ```
 
 ## Verification
@@ -415,17 +439,22 @@ helm install my-release ./chart --dry-run --debug
 
 ## Updating Source Files
 
-When you update the source files in the project root (init-db.sql, collector.sh, Grafana dashboards), synchronize them into the chart:
+When you update the source files in the project root (init-db.sql, collector/, Grafana dashboards), synchronize them into the chart and build the collector image:
 
 ```bash
-./chart/update-templates.sh
+./update-chart.sh
 ```
+
+This script will:
+- Build the collector Docker image with the current Chart version
+- Push the image to the registry
+- Sync source files into the Helm chart templates
 
 Then commit and deploy:
 
 ```bash
-git add chart/files/
-git commit -m "chore: update helm chart templates"
+git add chart/
+git commit -m "chore: update helm chart to version X.Y.Z"
 helm upgrade my-release ./chart --namespace jupyterhub-metrics
 ```
 

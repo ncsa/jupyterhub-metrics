@@ -19,6 +19,7 @@ spec:
         {{- include "jupyterhub-metrics.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: collector
     spec:
+      terminationGracePeriodSeconds: 30
       serviceAccountName: {{ include "jupyterhub-metrics.serviceAccountName" . }}
       {{- if .Values.collector.podSecurityContext }}
       securityContext:
@@ -36,38 +37,74 @@ spec:
       tolerations:
         {{- toYaml .Values.advanced.tolerations | nindent 8 }}
       {{- end }}
-      containers:
-        - name: collector
-          image: "{{ .Values.collector.image.repository }}:{{ .Values.collector.image.tag }}"
-          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+      initContainers:
+        - name: wait-for-db
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+            runAsUser: 1001
+            seccompProfile:
+              type: RuntimeDefault
           command:
             - /bin/sh
             - -c
             - |
-              apk add --no-cache bash curl jq postgresql-client ca-certificates
-              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-              chmod +x kubectl && mv kubectl /usr/local/bin/
-              exec /bin/bash /scripts/collector.sh
+              echo "Waiting for TimescaleDB to be ready at {{ include "jupyterhub-metrics.timescaledb.host" . }}:{{ .Values.timescaledb.database.port }}"
+              until psql -c 'SELECT 1' >/dev/null 2>&1; do
+                echo "Database is unavailable - sleeping"
+                sleep 2
+              done
+              echo "Database is available"
+          env:
+            - name: PGHOST
+              value: {{ include "jupyterhub-metrics.timescaledb.host" . }}
+            - name: PGPORT
+              value: {{ .Values.timescaledb.database.port | quote }}
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: POSTGRES_DB
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.timescaledb.passwordKey" . }}
+      containers:
+        - name: collector
+          securityContext:
+            {{- toYaml .Values.collector.containerSecurityContext | nindent 12 }}
+          image: "{{ .Values.collector.image.repository }}:{{ .Chart.Version }}"
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
           env:
             - name: DB_HOST
-              value: {{ include "jupyterhub-metrics.db.host" . }}
+              value: {{ include "jupyterhub-metrics.timescaledb.host" . }}
             - name: DB_PORT
-              value: {{ include "jupyterhub-metrics.db.port" . }}
+              value: {{ .Values.timescaledb.database.port | quote }}
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: POSTGRES_DB
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: POSTGRES_USER
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.db.passwordSecret" . }}
-                  key: {{ include "jupyterhub-metrics.db.passwordKey" . }}
+                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.timescaledb.passwordKey" . }}
             - name: NAMESPACE
               value: {{ .Values.jupyterhub.namespace | quote }}
             - name: COLLECTION_INTERVAL
@@ -76,12 +113,4 @@ spec:
               value: {{ .Values.jupyterhub.podLabelSelector | quote }}
           resources:
             {{- toYaml .Values.collector.resources | nindent 12 }}
-          volumeMounts:
-            - name: collector-script
-              mountPath: /scripts
-      volumes:
-        - name: collector-script
-          configMap:
-            name: {{ include "jupyterhub-metrics.fullname" . }}-collector-script
-            defaultMode: 0755
 {{- end }}

@@ -32,7 +32,7 @@
 6. Access the database directly (if needed):
   kubectl port-forward --namespace {{ include "jupyterhub-metrics.namespace" . }} svc/{{ .Values.timescaledb.serviceName }} 5432:5432 &
   PGPASSWORD=$(kubectl get secret --namespace {{ include "jupyterhub-metrics.namespace" . }} {{ include "jupyterhub-metrics.fullname" . }}-secrets -o jsonpath="{.data.POSTGRES_PASSWORD}" | base64 --decode)
-  psql -h localhost -U {{ .Values.db.user }} -d {{ .Values.db.name }}
+  psql -h localhost -U {{ .Values.timescaledb.database.user }} -d {{ .Values.timescaledb.database.name }}
 
 7. For more information, visit the documentation:
   README: chart/README.md
