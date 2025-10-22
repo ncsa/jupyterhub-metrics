@@ -1,22 +1,22 @@
 #!/bin/bash
-# TimescaleDB Restore Script for jupyterhub_metrics
-# This script restores a complete backup including schema, data, and views
+# TimescaleDB Restore Script - Simplified
+# Uses TimescaleDB best practices from official documentation
 
 set -e
 
-# Load configuration from centralized .env file
+# Load configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config-loader.sh"
 
-# Colors for output
+# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}TimescaleDB Restore Script${NC}"
+echo -e "${BLUE}TimescaleDB Restore${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
@@ -24,26 +24,18 @@ echo ""
 if [ -z "$1" ]; then
     echo -e "${RED}Error: No backup file specified${NC}"
     echo ""
-    echo "Usage: $0 <backup_file.sql.gz>"
+    echo "Usage: $0 <backup_file.dump>"
     echo ""
     echo "Available backups:"
-    ls -lh backups/*.sql.gz 2>/dev/null || echo "  No backups found in ./backups/"
-    echo ""
+    ls -lh backups/*.dump 2>/dev/null || ls -lh backups/*.sql.gz 2>/dev/null || echo "  No backups found"
     exit 1
 fi
 
 BACKUP_FILE="$1"
 
-# Check if backup file exists
 if [ ! -f "$BACKUP_FILE" ]; then
     echo -e "${RED}Error: Backup file not found: $BACKUP_FILE${NC}"
     exit 1
-fi
-
-# Detect if file is gzipped
-IS_GZIPPED=false
-if [[ "$BACKUP_FILE" == *.gz ]]; then
-    IS_GZIPPED=true
 fi
 
 BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
@@ -53,16 +45,14 @@ echo -e "${BLUE}File size: ${GREEN}$BACKUP_SIZE${NC}"
 echo -e "${BLUE}Target database: ${GREEN}$DB_NAME${NC}"
 echo ""
 
-# Warning message
+# Warning
 echo -e "${YELLOW}========================================${NC}"
-echo -e "${YELLOW}WARNING: This will DROP and recreate${NC}"
-echo -e "${YELLOW}the database '$DB_NAME'!${NC}"
+echo -e "${YELLOW}WARNING: This will DROP the database!${NC}"
 echo -e "${YELLOW}All existing data will be LOST!${NC}"
 echo -e "${YELLOW}========================================${NC}"
 echo ""
 
-# Ask for confirmation
-read -p "Are you sure you want to continue? (type 'yes' to proceed): " confirmation
+read -p "Type 'yes' to proceed: " confirmation
 
 if [ "$confirmation" != "yes" ]; then
     echo -e "${RED}Restore cancelled.${NC}"
@@ -70,87 +60,115 @@ if [ "$confirmation" != "yes" ]; then
 fi
 
 echo ""
-echo -e "${BLUE}Starting restore process...${NC}"
-echo ""
-
-# Export password for psql commands
 export PGPASSWORD="$DB_PASSWORD"
 
-# Step 1: Terminate existing connections to the database
-echo -e "${BLUE}[1/4] Terminating existing connections...${NC}"
-psql -h "$DB_HOST" \
-     -p "$DB_PORT" \
-     -U "$DB_USER" \
-     -d postgres \
+# Step 1: Terminate connections
+echo -e "${BLUE}[1/5] Terminating existing connections...${NC}"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres \
      -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();" \
      > /dev/null 2>&1 || true
 
-# Step 2: Drop the database
-echo -e "${BLUE}[2/4] Dropping existing database...${NC}"
-psql -h "$DB_HOST" \
-     -p "$DB_PORT" \
-     -U "$DB_USER" \
-     -d postgres \
-     -c "DROP DATABASE IF EXISTS $DB_NAME;" \
-     > /dev/null 2>&1
+# Step 2: Drop database
+echo -e "${BLUE}[2/5] Dropping existing database...${NC}"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres \
+     -c "DROP DATABASE IF EXISTS $DB_NAME;" > /dev/null 2>&1
 
-# Step 3: Create the database
-echo -e "${BLUE}[3/4] Creating new database...${NC}"
-psql -h "$DB_HOST" \
-     -p "$DB_PORT" \
-     -U "$DB_USER" \
-     -d postgres \
-     -c "CREATE DATABASE $DB_NAME;" \
-     > /dev/null 2>&1
+# Step 3: Create database
+echo -e "${BLUE}[3/5] Creating new database...${NC}"
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres \
+     -c "CREATE DATABASE $DB_NAME;" > /dev/null 2>&1
 
-# Step 4: Restore the backup
-echo -e "${BLUE}[4/4] Restoring backup...${NC}"
-if [ "$IS_GZIPPED" = true ]; then
-    # Decompress and restore
-    gunzip -c "$BACKUP_FILE" | psql -h "$DB_HOST" \
-         -p "$DB_PORT" \
-         -U "$DB_USER" \
-         -d "$DB_NAME" \
-         --quiet
-else
-    # Restore uncompressed file
-    psql -h "$DB_HOST" \
-         -p "$DB_PORT" \
-         -U "$DB_USER" \
-         -d "$DB_NAME" \
-         -f "$BACKUP_FILE" \
-         --quiet
-fi
+# Step 4: Restore using pg_restore
+echo -e "${BLUE}[4/5] Restoring backup...${NC}"
+echo -e "${YELLOW}This may take several minutes...${NC}"
+echo -e "${YELLOW}Note: Showing errors and warnings only${NC}"
+echo ""
 
-# Unset password
-unset PGPASSWORD
+# IMPORTANT: Do NOT use -j (parallel jobs) - it breaks TimescaleDB catalogs
+# Do NOT use --single-transaction - TimescaleDB restore may have expected errors
+# Use --exit-on-error to stop on critical failures
+pg_restore -h "$DB_HOST" \
+           -p "$DB_PORT" \
+           -U "$DB_USER" \
+           -d "$DB_NAME" \
+           --no-owner \
+           --no-acl \
+           --verbose \
+           "$BACKUP_FILE" 2>&1 | grep -E "^pg_restore: error:|ERROR:|WARNING:|FATAL:" || true
 
-# Check if restore was successful
-if [ $? -eq 0 ]; then
-    # Refresh materialized views
-    echo -e "${BLUE}[5/5] Refreshing materialized views...${NC}"
-    export PGPASSWORD="$DB_PASSWORD"
-    psql -h "$DB_HOST" \
-         -p "$DB_PORT" \
-         -U "$DB_USER" \
-         -d "$DB_NAME" \
-         -c "REFRESH MATERIALIZED VIEW user_sessions;" \
-         > /dev/null 2>&1 || echo -e "${YELLOW}Note: Materialized view refresh skipped (may not exist in older backups)${NC}"
-    unset PGPASSWORD
+RESTORE_EXIT=${PIPESTATUS[0]}
 
-    echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}Restore completed successfully!${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${BLUE}Database: ${GREEN}$DB_NAME${NC}"
-    echo -e "${BLUE}Restored from: ${GREEN}$BACKUP_FILE${NC}"
-    echo ""
-else
+if [ $RESTORE_EXIT -ne 0 ]; then
     echo ""
     echo -e "${RED}========================================${NC}"
     echo -e "${RED}Restore failed!${NC}"
     echo -e "${RED}========================================${NC}"
-    echo -e "${YELLOW}The database may be in an inconsistent state.${NC}"
-    echo ""
+    unset PGPASSWORD
     exit 1
 fi
+
+# Step 5: Fix continuous aggregates (recreate replication slots)
+echo -e "${BLUE}[5/6] Fixing continuous aggregates...${NC}"
+# Replication slots don't get restored by pg_dump, causing "replication slot does not exist" errors
+# We need to manually refresh each continuous aggregate to recreate them
+CAGG_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+     -tAc "SELECT COUNT(*) FROM timescaledb_information.continuous_aggregates;" 2>/dev/null || echo "0")
+
+if [ "$CAGG_COUNT" -gt 0 ]; then
+    echo -e "${BLUE}Found $CAGG_COUNT continuous aggregates, refreshing to recreate replication slots...${NC}"
+
+    # Refresh each continuous aggregate
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'EOSQL' 2>&1 | grep -E "NOTICE|ERROR" || true
+DO $$
+DECLARE
+    cagg RECORD;
+BEGIN
+    FOR cagg IN
+        SELECT view_name
+        FROM timescaledb_information.continuous_aggregates
+    LOOP
+        BEGIN
+            RAISE NOTICE 'Refreshing continuous aggregate: %', cagg.view_name;
+            EXECUTE format('CALL refresh_continuous_aggregate(%L, NULL, NULL)', cagg.view_name);
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Failed to refresh %: %', cagg.view_name, SQLERRM;
+        END;
+    END LOOP;
+END $$;
+EOSQL
+
+    echo -e "${GREEN}✓ Continuous aggregates refreshed${NC}"
+else
+    echo -e "${YELLOW}No continuous aggregates found${NC}"
+fi
+
+# Step 6: Refresh regular materialized views
+echo -e "${BLUE}[6/6] Refreshing materialized views...${NC}"
+VIEW_EXISTS=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+     -tAc "SELECT COUNT(*) FROM pg_matviews WHERE matviewname = 'user_sessions';" 2>/dev/null || echo "0")
+
+if [ "$VIEW_EXISTS" = "1" ]; then
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+         -c "REFRESH MATERIALIZED VIEW CONCURRENTLY user_sessions;" \
+         > /dev/null 2>&1 && echo -e "${GREEN}✓ Materialized view refreshed${NC}" || echo -e "${YELLOW}Note: Could not refresh view${NC}"
+else
+    echo -e "${YELLOW}Note: Materialized view not found (may not exist in this backup)${NC}"
+fi
+
+unset PGPASSWORD
+
+echo ""
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Restore completed successfully!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${BLUE}Database: ${GREEN}$DB_NAME${NC}"
+echo -e "${BLUE}Restored from: ${GREEN}$BACKUP_FILE${NC}"
+echo ""
+echo -e "${BLUE}Verifying TimescaleDB jobs...${NC}"
+export PGPASSWORD="$DB_PASSWORD"
+JOB_COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+     -tAc "SELECT COUNT(*) FROM timescaledb_information.jobs;" 2>/dev/null || echo "0")
+unset PGPASSWORD
+
+echo -e "${GREEN}✓ Found $JOB_COUNT TimescaleDB background jobs${NC}"
+echo ""
