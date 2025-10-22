@@ -64,6 +64,58 @@ helm install jupyterhub-metrics ./chart \
 
 For more details, see [HELM_CHART.md](HELM_CHART.md).
 
+**Building and Updating the Chart:**
+
+The `update-chart.sh` script performs all necessary updates including multi-architecture builds:
+
+```bash
+# Update chart files, build multi-arch collector image, and bump version
+./update-chart.sh
+
+# Build only, don't push to registry
+PUSH_TO_REGISTRY=false ./update-chart.sh
+
+# Then deploy with Helm
+helm install jupyterhub-metrics ./chart \
+  --namespace jupyterhub-metrics \
+  --create-namespace \
+  --set timescaledb.database.password="$(openssl rand -base64 32)" \
+  --set grafana.adminPassword="$(openssl rand -base64 32)"
+```
+
+The `update-chart.sh` script:
+- Syncs source files (init-db.sql, Grafana configs) to chart/files/
+- Builds multi-architecture Docker images from `collector/Dockerfile`
+  - **linux/amd64** (x86 - Intel/AMD)
+  - **linux/arm64** (ARM - Raspberry Pi, Apple Silicon, etc.)
+- **Collector image version automatically matches Chart version**
+- Pushes to `ncsa/jupyterhub-metrics-collector:<chart-version>`
+- Automatically bumps the patch version in Chart.yaml if anything changed
+- Deployment template uses `.Chart.Version` directly for image tag
+- Requires Docker with buildx support (install via [Docker Build documentation](https://docs.docker.com/build/))
+- Falls back to single-arch build if buildx not available
+
+**Typical workflow:**
+```bash
+# 1. Make changes to collector.sh, init-db.sql, or grafana configs
+# 2. Run update script (bumps chart version automatically)
+./update-chart.sh
+# This will:
+#   - Sync files to chart/
+#   - Build collector image with current version (e.g., 1.0.1)
+#   - Bump Chart.yaml from 1.0.0 to 1.0.1
+#   - Push ncsa/jupyterhub-metrics-collector:1.0.1
+#   - Deployment template uses .Chart.Version → ncsa/jupyterhub-metrics-collector:1.0.1
+
+# 3. Review and commit changes
+git add chart/ && git commit -m "chore: update helm chart to vX.Y.Z"
+git tag vX.Y.Z
+
+# 4. Deploy the updated chart
+helm install jupyterhub-metrics ./chart
+# Image version is automatically set from .Chart.Version (from Chart.yaml)
+```
+
 ### Option 2: Docker Compose (Local Development)
 
 Run TimescaleDB and Grafana in Docker, with the collector using your local kubectl configuration.
@@ -98,8 +150,8 @@ cd jupyterhub-metrics
 
 Save the following files in your directory:
 - `docker-compose.yml`
-- `Dockerfile.collector`
-- `collector.sh`
+- `collector/Dockerfile` (in collector subfolder)
+- `collector/collector.sh` (in collector subfolder)
 - `config-loader.sh`
 - `init-db.sql`
 - `grafana/provisioning/datasources/timescaledb.yml`

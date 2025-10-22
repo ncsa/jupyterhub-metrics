@@ -356,8 +356,8 @@ If you're upgrading from hardcoded configurations, follow these steps:
 
 4. **Verify scripts load correctly:**
    ```bash
-   # Test collector script
-   ./collector.sh --help  # Should work if config is correct
+   # Test collector script in Docker Compose
+   docker-compose up collector  # Should work if config is correct
    
    # Test backup script
    ./dump-database.sh  # Should work without errors
