@@ -34,7 +34,7 @@ log() {
 
 # Check if database is accessible
 check_db() {
-    if ! psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c '\q' 2>/dev/null; then
+    if ! psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c '\q' 2>/dev/null; then
         log "ERROR: Cannot connect to database"
         exit 1
     fi
@@ -45,11 +45,11 @@ sync_users() {
     log "Synchronizing users table from container_observations..."
 
     # Get counts before
-    local users_before=$(psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
+    local users_before=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
 
     # Upsert users from container_observations
     # Extract user_id from pod_name, use email prefix as fallback for full_name
-    psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" <<'EOF'
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'EOF'
 INSERT INTO users (email, user_id, full_name, first_seen, last_seen)
 SELECT
     user_email,
@@ -79,7 +79,7 @@ ON CONFLICT (email) DO UPDATE SET
 EOF
 
     if [ $? -eq 0 ]; then
-        local users_after=$(psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
+        local users_after=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
         local new_users=$((users_after - users_before))
         log "✓ Users table synchronized"
         log "  Users before: $users_before"
@@ -97,9 +97,9 @@ refresh_sessions_view() {
 
     local start_time=$(date +%s)
 
-    if psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "REFRESH MATERIALIZED VIEW CONCURRENTLY user_sessions;" > /dev/null 2>&1; then
+    if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "REFRESH MATERIALIZED VIEW CONCURRENTLY user_sessions;" > /dev/null 2>&1; then
         local elapsed=$(($(date +%s) - start_time))
-        local session_count=$(psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM user_sessions;" | xargs)
+        local session_count=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM user_sessions;" | xargs)
         log "✓ user_sessions view refreshed in ${elapsed}s"
         log "  Total sessions: $session_count"
     else
@@ -113,7 +113,7 @@ refresh_continuous_aggregates() {
     log "Refreshing continuous aggregates..."
 
     # Get time range from container_observations
-    local time_range=$(psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT MIN(timestamp), MAX(timestamp) FROM container_observations;" | xargs)
+    local time_range=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT MIN(timestamp), MAX(timestamp) FROM container_observations;" | xargs)
 
     if [[ -z "$time_range" || "$time_range" == "|" ]]; then
         log "  No data in container_observations, skipping continuous aggregates"
@@ -126,14 +126,14 @@ refresh_continuous_aggregates() {
     log "  Time range: $start_time to $end_time"
 
     # Refresh hourly_node_stats
-    if psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "CALL refresh_continuous_aggregate('hourly_node_stats', '$start_time', '$end_time');" > /dev/null 2>&1; then
+    if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "CALL refresh_continuous_aggregate('hourly_node_stats', '$start_time', '$end_time');" > /dev/null 2>&1; then
         log "  ✓ hourly_node_stats refreshed"
     else
         log "  WARNING: Failed to refresh hourly_node_stats (may update on schedule)"
     fi
 
     # Refresh hourly_image_stats
-    if psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "CALL refresh_continuous_aggregate('hourly_image_stats', '$start_time', '$end_time');" > /dev/null 2>&1; then
+    if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "CALL refresh_continuous_aggregate('hourly_image_stats', '$start_time', '$end_time');" > /dev/null 2>&1; then
         log "  ✓ hourly_image_stats refreshed"
     else
         log "  WARNING: Failed to refresh hourly_image_stats (may update on schedule)"
@@ -146,7 +146,7 @@ print_summary() {
 
     echo ""
     echo "=== Container Observations ==="
-    psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
         SELECT
             COUNT(*) as total_rows,
             COUNT(DISTINCT user_email) as unique_users,
@@ -157,7 +157,7 @@ print_summary() {
 
     echo ""
     echo "=== Users Table ==="
-    psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
         SELECT
             COUNT(*) as total_users,
             MIN(first_seen) as earliest_user,
@@ -167,7 +167,7 @@ print_summary() {
 
     echo ""
     echo "=== User Sessions ==="
-    psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
         SELECT
             COUNT(*) as total_sessions,
             ROUND(SUM(runtime_hours)::numeric, 2) as total_runtime_hours,
