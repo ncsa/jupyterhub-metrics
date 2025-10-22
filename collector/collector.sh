@@ -166,6 +166,15 @@ EOF
     rm "$users_file"
 }
 
+# Handle signals gracefully
+SHUTDOWN=0
+shutdown_handler() {
+    log "Received shutdown signal, finishing current collection and exiting..."
+    SHUTDOWN=1
+}
+
+trap shutdown_handler SIGTERM SIGINT
+
 # Main loop
 main() {
     log "Starting JupyterHub metrics collector"
@@ -187,13 +196,20 @@ main() {
     collect_metrics
 
     # Continuous collection loop
-    while true; do
-        sleep "$COLLECTION_INTERVAL"
-        collect_metrics
-    done
-}
+    while [ $SHUTDOWN -eq 0 ]; do
+        # Sleep in small increments to allow faster shutdown
+        local elapsed=0
+        while [ $elapsed -lt $COLLECTION_INTERVAL ] && [ $SHUTDOWN -eq 0 ]; do
+            sleep 1
+            elapsed=$((elapsed + 1))
+        done
 
-# Handle signals gracefully
-trap 'log "Received shutdown signal, exiting..."; exit 0' SIGTERM SIGINT
+        if [ $SHUTDOWN -eq 0 ]; then
+            collect_metrics
+        fi
+    done
+
+    log "Collector shutdown complete"
+}
 
 main

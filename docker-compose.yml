@@ -43,8 +43,8 @@ services:
 
   collector:
     build:
-      context: .
-      dockerfile: Dockerfile.collector
+      context: ./collector
+      dockerfile: Dockerfile
     container_name: jupyterhub-collector
     environment:
       DB_HOST: timescaledb
