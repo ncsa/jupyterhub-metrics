@@ -660,7 +660,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  time_bucket('$__interval', timestamp) AS time,\n  COUNT(DISTINCT user_email) AS \"Active Users\"\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
+          "rawSql": "SELECT\n  time_bucket_gapfill('5 minutes', timestamp, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz) AS time,\n  COALESCE(COUNT(DISTINCT user_email), 0) AS \"Active Users\"\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
           "refId": "A",
           "select": [
             [
@@ -760,7 +760,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  time_bucket('$__interval', timestamp) AS time,\n  COUNT(DISTINCT pod_name) AS \"Total Applications\"\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
+          "rawSql": "SELECT\n  time_bucket_gapfill('$__interval', timestamp, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz) AS time,\n  COALESCE(COUNT(DISTINCT pod_name), 0) AS \"Total Applications\"\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
           "refId": "A",
           "select": [
             [
@@ -862,7 +862,7 @@
           "group": [],
           "metricColumn": "node_name",
           "rawQuery": true,
-          "rawSql": "SELECT\n  time_bucket('$__interval', timestamp) AS time,\n  node_name AS metric,\n  COUNT(DISTINCT pod_name) AS value\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time, metric\nORDER BY time;",
+          "rawSql": "SELECT\n  time_bucket_gapfill('$__interval', timestamp, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz) AS time,\n  SUBSTRING(node_name FROM POSITION('worker-' IN node_name) + 7) AS metric,\n  COALESCE(COUNT(DISTINCT pod_name), 0) AS value\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time, metric\nORDER BY time;",
           "refId": "A",
           "select": [
             [
@@ -964,7 +964,7 @@
           "group": [],
           "metricColumn": "container_base",
           "rawQuery": true,
-          "rawSql": "SELECT\n  time_bucket('$__interval', timestamp) AS time,\n  container_base AS metric,\n  COUNT(DISTINCT pod_name) AS value\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time, metric\nORDER BY time;",
+          "rawSql": "SELECT\n  time_bucket_gapfill('$__interval', timestamp, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz) AS time,\n  container_base AS metric,\n  COALESCE(COUNT(DISTINCT pod_name), 0) AS value\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time, metric\nORDER BY time;",
           "refId": "A",
           "select": [
             [
