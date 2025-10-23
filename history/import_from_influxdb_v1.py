@@ -122,54 +122,6 @@ def draw_waiting_screen(stdscr, minutes_before: int, minutes_after: int):
         pass
 
 
-def wait_for_safe_time_window(minutes_before: int = 1, minutes_after: int = 2):
-    """
-    Wait until we're outside the blocked time window.
-    Uses curses for a nice countdown display.
-
-    Args:
-        minutes_before: Minutes before the hour to block (default: 1)
-        minutes_after: Minutes after the hour to block (default: 2)
-    """
-
-    def wait_with_display(stdscr=None):
-        while is_in_blocked_time_window(minutes_before, minutes_after):
-            if stdscr:
-                # Use curses display
-                draw_waiting_screen(stdscr, minutes_before, minutes_after)
-            else:
-                # Fallback to simple print
-                now = datetime.now(timezone.utc)
-                current_minute = now.minute
-
-                # Calculate how many minutes until the safe window
-                if current_minute <= minutes_after:
-                    wait_minutes = minutes_after - current_minute + 1
-                else:  # current_minute >= (60 - minutes_before)
-                    wait_minutes = (60 - current_minute) + minutes_after + 1
-
-                print(
-                    f"⏳ Blocked time window (minute :{current_minute:02d}) - waiting ~{wait_minutes}m until :{minutes_after + 1:02d}",
-                    end="\r",
-                )
-
-            # Sleep for 5 seconds and check again
-            time.sleep(5)
-
-        # Clear the display when done
-        if stdscr:
-            stdscr.clear()
-            stdscr.refresh()
-        else:
-            print()  # Clear the line
-
-    # Try to use curses, fall back to simple display if it fails
-    try:
-        curses.wrapper(wait_with_display)
-    except:
-        wait_with_display(None)
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Import JupyterHub container data from InfluxDB v1.x to PostgreSQL"
@@ -244,28 +196,6 @@ def parse_args():
         help="Skip the blocked time window check (use with caution)",
     )
     return parser.parse_args()
-
-
-def parse_time_arg(time_str: str) -> str:
-    """Convert time argument to InfluxQL format"""
-    if time_str == "now":
-        return "now()"
-
-    # Check if it's a relative time (e.g., "7d", "30d", "1y")
-    if time_str[-1] in ["d", "h", "m", "y", "w"]:
-        return f"now() - {time_str}"
-
-    # Otherwise treat as absolute timestamp
-    try:
-        dt = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
-        return f"'{dt.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
-    except:
-        # Try parsing as simple date
-        try:
-            dt = datetime.strptime(time_str, "%Y-%m-%d")
-            return f"'{dt.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
-        except:
-            raise ValueError(f"Invalid time format: {time_str}")
 
 
 def parse_duration_to_seconds(duration_str: str) -> int:
@@ -557,6 +487,93 @@ def transform_records(records: List[Dict[str, Any]]) -> List[tuple]:
     return transformed, stats
 
 
+def extract_users_from_batch(transformed: List[tuple]) -> Dict[str, Dict]:
+    """
+    Extract unique users from transformed observation records.
+    Returns dict: {email: {user_id, first_seen, last_seen}}
+    """
+    users = {}
+
+    for record in transformed:
+        timestamp = record[0]  # timestamp
+        user_email = record[1]  # user_email
+        pod_name = record[8]  # pod_name
+
+        # Extract user_id from pod_name
+        if pod_name.startswith("jupyter-"):
+            user_id = pod_name[8:].rsplit("-", 1)[0]  # Remove hash suffix
+        else:
+            user_id = "unknown"
+
+        if user_email not in users:
+            users[user_email] = {
+                "user_id": user_id,
+                "first_seen": timestamp,
+                "last_seen": timestamp,
+            }
+        else:
+            # Update timestamps
+            users[user_email]["first_seen"] = min(
+                users[user_email]["first_seen"], timestamp
+            )
+            users[user_email]["last_seen"] = max(
+                users[user_email]["last_seen"], timestamp
+            )
+
+    return users
+
+
+def upsert_users(conn, users: Dict[str, Dict], silent: bool = False):
+    """
+    Upsert users, only updating timestamps for existing users.
+    Preserves existing user_id and full_name from collector.
+    """
+    if not users:
+        return 0
+
+    cursor = conn.cursor()
+
+    # Get count before
+    cursor.execute("SELECT COUNT(*) FROM users")
+    users_before = cursor.fetchone()[0]
+
+    # Prepare data as list of tuples
+    user_data = [
+        (email, data["user_id"], email, data["first_seen"], data["last_seen"])
+        for email, data in users.items()
+    ]
+
+    upsert_sql = """
+    INSERT INTO users (email, user_id, full_name, first_seen, last_seen)
+    VALUES (%s, %s, split_part(%s, '@', 1), %s, %s)
+    ON CONFLICT (email) DO UPDATE SET
+        first_seen = LEAST(users.first_seen, EXCLUDED.first_seen),
+        last_seen = GREATEST(users.last_seen, EXCLUDED.last_seen)
+    """
+
+    try:
+        execute_batch(cursor, upsert_sql, user_data, page_size=1000)
+        conn.commit()
+
+        # Get count after
+        cursor.execute("SELECT COUNT(*) FROM users")
+        users_after = cursor.fetchone()[0]
+
+        users_inserted = users_after - users_before
+
+        if not silent:
+            print(f"✓ Upserted {len(users)} unique users ({users_inserted} new)")
+
+        return users_inserted
+    except Exception as e:
+        conn.rollback()
+        if not silent:
+            print(f"ERROR upserting users: {e}")
+        raise
+    finally:
+        cursor.close()
+
+
 def insert_records(conn, records: List[tuple], batch_size: int, silent: bool = False):
     """Insert records into PostgreSQL in batches"""
     if not records:
@@ -602,73 +619,6 @@ def insert_records(conn, records: List[tuple], batch_size: int, silent: bool = F
         conn.rollback()
         if not silent:
             print(f"ERROR inserting records: {e}")
-        raise
-    finally:
-        cursor.close()
-
-
-def populate_users_table(conn, start_time: datetime, end_time: datetime):
-    """
-    Populate the users table from container_observations for the imported time range.
-    Updates user_id, full_name, and first_seen/last_seen timestamps.
-    """
-    print("\n=== Populating Users Table ===")
-
-    cursor = conn.cursor()
-
-    try:
-        # Get count before
-        cursor.execute("SELECT COUNT(*) FROM users")
-        users_before = cursor.fetchone()[0]
-
-        # Upsert users from container_observations
-        # Extract user_id from pod_name (jupyter-{user_id}-...)
-        # Group by user_email only to avoid conflicts
-        upsert_sql = """
-        INSERT INTO users (email, user_id, full_name, first_seen, last_seen)
-        SELECT
-            user_email,
-            CASE
-                WHEN MIN(pod_name) LIKE 'jupyter-%%' THEN
-                    regexp_replace(substring(MIN(pod_name) from 9), '-[^-]+$$', '')
-                ELSE 'unknown'
-            END AS user_id,
-            COALESCE(
-                NULLIF(MAX(user_name), 'unknown'),
-                NULLIF(MAX(user_name), ''),
-                split_part(user_email, '@', 1)
-            ) AS full_name,
-            MIN(timestamp) AS first_seen,
-            MAX(timestamp) AS last_seen
-        FROM container_observations
-        WHERE timestamp >= %s AND timestamp <= %s
-        GROUP BY user_email
-        ON CONFLICT (email) DO UPDATE SET
-            user_id = EXCLUDED.user_id,
-            full_name = COALESCE(
-                NULLIF(users.full_name, ''),
-                NULLIF(EXCLUDED.full_name, ''),
-                split_part(EXCLUDED.email, '@', 1)
-            ),
-            first_seen = LEAST(users.first_seen, EXCLUDED.first_seen),
-            last_seen = GREATEST(users.last_seen, EXCLUDED.last_seen)
-        """
-
-        cursor.execute(upsert_sql, (start_time, end_time))
-        conn.commit()
-
-        # Get count after
-        cursor.execute("SELECT COUNT(*) FROM users")
-        users_after = cursor.fetchone()[0]
-
-        print(f"✓ Users table updated")
-        print(f"  Users before: {users_before:,}")
-        print(f"  Users after: {users_after:,}")
-        print(f"  New users: {users_after - users_before:,}")
-
-    except Exception as e:
-        conn.rollback()
-        print(f"ERROR populating users table: {e}")
         raise
     finally:
         cursor.close()
@@ -764,6 +714,7 @@ def draw_progress(
     total_windows,
     records_count,
     inserted_count,
+    users_count,
     window_start,
     window_end,
     start_time,
@@ -830,7 +781,7 @@ def draw_progress(
             "",
             f"  Window:     {i:,} / {total_windows:,}",
             f"  Retrieved:  {records_count:,} records",
-            f"  Inserted:   {inserted_count:,} records",
+            f"  Inserted:   {inserted_count:,} containers, {users_count:,} users",
             "",
         ]
 
@@ -959,7 +910,8 @@ def main():
     # Query data in batches (time windows)
     all_records = []
     start_time = time.time()
-    total_inserted = 0
+    total_containers_inserted = 0
+    total_users_inserted = 0
     total_stats = {
         "skipped_no_pod_name": 0,
         "skipped_not_jupyter": 0,
@@ -972,7 +924,11 @@ def main():
 
     # Wrapper function for the import loop that uses curses
     def run_import_loop(stdscr=None):
-        nonlocal all_records, total_inserted, total_stats
+        nonlocal \
+            all_records, \
+            total_containers_inserted, \
+            total_users_inserted, \
+            total_stats
 
         # Initialize curses if available
         if stdscr:
@@ -991,7 +947,8 @@ def main():
                                 i,
                                 len(windows),
                                 len(all_records),
-                                total_inserted,
+                                total_containers_inserted,
+                                total_users_inserted,
                                 window_start,
                                 window_end,
                                 start_time,
@@ -1026,10 +983,16 @@ def main():
                     total_stats["duplicates_in_batch"] += stats["duplicates_in_batch"]
 
                     if transformed:
-                        rows_inserted = insert_records(
+                        # Insert container observations
+                        containers_inserted = insert_records(
                             pg_conn, transformed, args.batch_size, silent=True
                         )
-                        total_inserted += rows_inserted
+                        total_containers_inserted += containers_inserted
+
+                        # Extract and upsert users from this batch
+                        users = extract_users_from_batch(transformed)
+                        users_inserted = upsert_users(pg_conn, users, silent=True)
+                        total_users_inserted += users_inserted
 
                 # Update progress display
                 if stdscr:
@@ -1038,7 +1001,8 @@ def main():
                         i,
                         len(windows),
                         len(all_records),
-                        total_inserted,
+                        total_containers_inserted,
+                        total_users_inserted,
                         window_start,
                         window_end,
                         start_time,
@@ -1121,18 +1085,16 @@ def main():
     )
     print(f"  = Ready to insert:            {transformed_count:,}")
 
-    if transformed_count > total_inserted:
-        db_duplicates = transformed_count - total_inserted
+    if transformed_count > total_containers_inserted:
+        db_duplicates = transformed_count - total_containers_inserted
         print(f"  - Already in database:        {db_duplicates:,}")
 
-    print(f"  = Actually inserted:          {total_inserted:,}")
+    print(f"  = Containers inserted:        {total_containers_inserted:,}")
+    print(f"  = Users inserted:             {total_users_inserted:,}")
 
-    # Post-import processing: populate users table and refresh views
-    if total_inserted > 0:
+    # Post-import processing: refresh views
+    if total_containers_inserted > 0:
         try:
-            # Populate users table from imported observations
-            populate_users_table(pg_conn, start_dt, stop_dt)
-
             # Refresh materialized views
             refresh_materialized_views(pg_conn)
 
