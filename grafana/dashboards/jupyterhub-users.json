@@ -515,13 +515,14 @@
         }
       },
       "pluginVersion": "10.0.0",
+      "interval": "5m",
       "targets": [
         {
           "format": "time_series",
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  time_bucket_gapfill('$__interval', timestamp, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz) AS time,\n  COALESCE(COUNT(DISTINCT user_email), 0) AS \"Active Users\"\nFROM container_observations\nWHERE $__timeFilter(timestamp)\nGROUP BY time\nORDER BY time;",
+          "rawSql": "SELECT\n  time_bucket_gapfill('$__interval', timestamp, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz + '$__interval'::interval) AS time,\n  COALESCE(COUNT(DISTINCT user_email), 0) AS \"Active Users\"\nFROM container_observations\nWHERE timestamp >= $__timeFrom()::timestamptz - '$__interval'::interval\n  AND timestamp < $__timeTo()::timestamptz + '$__interval'::interval\nGROUP BY time\nORDER BY time;",
           "refId": "A",
           "select": [
             [
@@ -615,13 +616,14 @@
         }
       },
       "pluginVersion": "10.0.0",
+      "interval": "1d",
       "targets": [
         {
           "format": "time_series",
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  time_bucket_gapfill('1 day', first_seen, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz) AS time,\n  COALESCE(COUNT(*), 0) AS \"New Users\"\nFROM users\nWHERE $__timeFilter(first_seen)\nGROUP BY time\nORDER BY time;",
+          "rawSql": "SELECT\n  time_bucket_gapfill('1 day', first_seen, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz + '1 day'::interval) AS time,\n  COALESCE(COUNT(*), 0) AS \"New Users\"\nFROM users\nWHERE first_seen >= $__timeFrom()::timestamptz - '1 day'::interval\n  AND first_seen < $__timeTo()::timestamptz + '1 day'::interval\nGROUP BY time\nORDER BY time;",
           "refId": "A",
           "select": [
             [
@@ -715,13 +717,14 @@
         }
       },
       "pluginVersion": "10.0.0",
+      "interval": "1d",
       "targets": [
         {
           "format": "time_series",
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "WITH baseline AS (\n  SELECT COUNT(*) AS users_before\n  FROM users\n  WHERE first_seen < $__timeFrom()\n),\nuser_buckets AS (\n  SELECT\n    time_bucket_gapfill('$__interval', first_seen, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz) AS time,\n    COALESCE(COUNT(*), 0) AS new_users\n  FROM users\n  WHERE $__timeFilter(first_seen)\n  GROUP BY time_bucket_gapfill('$__interval', first_seen, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz)\n)\nSELECT\n  time,\n  (SELECT users_before FROM baseline) + SUM(new_users) OVER (ORDER BY time) AS \"Total Users\"\nFROM user_buckets\nORDER BY time;",
+          "rawSql": "WITH baseline AS (\n  SELECT COUNT(*) AS users_before\n  FROM users\n  WHERE first_seen < $__timeFrom()\n),\nuser_buckets AS (\n  SELECT\n    time_bucket_gapfill('$__interval', first_seen, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz + '$__interval'::interval) AS time,\n    COALESCE(COUNT(*), 0) AS new_users\n  FROM users\n  WHERE first_seen >= $__timeFrom()::timestamptz - '$__interval'::interval\n    AND first_seen < $__timeTo()::timestamptz + '$__interval'::interval\n  GROUP BY time_bucket_gapfill('$__interval', first_seen, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz + '$__interval'::interval)\n)\nSELECT\n  time,\n  (SELECT users_before FROM baseline) + SUM(new_users) OVER (ORDER BY time) AS \"Total Users\"\nFROM user_buckets\nORDER BY time;",
           "refId": "A",
           "select": [
             [
