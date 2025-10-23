@@ -229,7 +229,7 @@ ingress:
   enabled: false
 
   # Ingress class name (nginx, traefik, etc.)
-  className: nginx
+  className: ""
 
   # Hostname for Grafana access
   host: metrics.example.com
