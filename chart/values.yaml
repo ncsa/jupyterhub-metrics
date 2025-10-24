@@ -112,6 +112,24 @@ grafana:
   # Example: --set grafana.adminPassword="$(openssl rand -base64 32)"
   adminPassword: ""
 
+  # Anonymous access
+  anonymous:
+    enabled: false
+    orgName: "Main Org."
+    orgRole: Viewer
+
+  # OAuth2 configuration
+  oauth2:
+    enabled: false
+    name: ""
+    clientId: ""
+    clientSecret: ""
+    scopes: ""
+    authUrl: ""
+    tokenUrl: ""
+    apiUrl: ""
+    allowedOrganizations: "Main Org."
+
   # Grafana image configuration
   image:
     repository: grafana/grafana

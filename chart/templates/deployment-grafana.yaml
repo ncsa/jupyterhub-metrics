@@ -74,6 +74,34 @@ spec:
                 secretKeyRef:
                   name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: {{ include "jupyterhub-metrics.timescaledb.passwordKey" . }}
+{{- if .Values.grafana.anonymous.enabled }}
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_NAME
+              value: {{ .Values.grafana.anonymous.orgName | quote }}
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: {{ .Values.grafana.anonymous.orgRole | quote }}
+{{- end }}
+{{- if .Values.grafana.oauth2.enabled }}
+            - name: GF_AUTH_GENERIC_OAUTH_ENABLED
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_NAME
+              value: {{ .Values.grafana.oauth2.name | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+              value: {{ .Values.grafana.oauth2.clientId | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+              value: {{ .Values.grafana.oauth2.clientSecret | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_SCOPES
+              value: {{ .Values.grafana.oauth2.scopes | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
+              value: {{ .Values.grafana.oauth2.authUrl | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
+              value: {{ .Values.grafana.oauth2.tokenUrl | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_API_URL
+              value: {{ .Values.grafana.oauth2.apiUrl | quote }}
+            - name: GF_AUTH_GENERIC_OAUTH_ALLOWED_ORGANIZATIONS
+              value: {{ .Values.grafana.oauth2.allowedOrganizations | quote }}
+{{- end }}
           livenessProbe:
             httpGet:
               path: /api/health
