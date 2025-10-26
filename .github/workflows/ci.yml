@@ -1,0 +1,83 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  markdown-lint:
+    name: Markdown Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: "**/*.md"
+
+  yaml-lint:
+    name: YAML Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint YAML files
+        run: |
+          yamllint -c .yamllint.yml .
+
+  validate-json:
+    name: JSON Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          find . -name "*.json" ! -path "*/venv/*" ! -path "*/.git/*" \
+            ! -path "*/node_modules/*" -type f | while read -r file; do
+            echo "Validating $file"
+            if ! jq empty "$file" 2>/dev/null; then
+              echo "ERROR: Invalid JSON in $file"
+              exit 1
+            fi
+          done
+
+  check-file-permissions:
+    name: Check File Permissions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check script permissions
+        run: |
+          # All .sh files should be executable
+          find . -name "*.sh" ! -path "*/venv/*" ! -path "*/.git/*" \
+            -type f | while read -r script; do
+            if [ ! -x "$script" ]; then
+              echo "ERROR: $script is not executable. Run: chmod +x $script"
+              exit 1
+            fi
+          done
+
+          # All .py files in root should be executable
+          find . -maxdepth 1 -name "*.py" -type f | while read -r script; do
+            if [ ! -x "$script" ]; then
+              echo "WARNING: $script is not executable"
+            fi
+          done

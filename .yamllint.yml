@@ -1,0 +1,19 @@
+extends: default
+
+# Ignore Helm chart templates (they use Go templating which yamllint can't parse)
+ignore: |
+  chart/templates/
+  chart/cori-dev.yaml
+
+rules:
+  line-length:
+    max: 120
+    level: warning
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  truthy:
+    allowed-values: ["true", "false", "on", "off"]

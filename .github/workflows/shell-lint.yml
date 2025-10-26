@@ -1,0 +1,42 @@
+name: Shell Script Linting
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.sh'
+      - '.github/workflows/shell-lint.yml'
+  pull_request:
+    paths:
+      - '**.sh'
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+          format: gcc
+        env:
+          SHELLCHECK_OPTS: -e SC1091
+
+      - name: Find all shell scripts
+        id: find-scripts
+        run: |
+          find . -type f -name "*.sh" ! -path "*/venv/*" ! -path "*/.git/*" > scripts.txt
+          cat scripts.txt
+
+      - name: Verify shell scripts are executable
+        run: |
+          while IFS= read -r script; do
+            if [ ! -x "$script" ]; then
+              echo "WARNING: $script is not executable"
+            fi
+          done < scripts.txt

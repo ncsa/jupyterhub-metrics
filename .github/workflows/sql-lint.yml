@@ -1,0 +1,59 @@
+name: SQL Linting
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.sql'
+      - '.github/workflows/sql-lint.yml'
+  pull_request:
+    paths:
+      - '**.sql'
+  workflow_dispatch:
+
+jobs:
+  sqlfluff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff
+
+      - name: Create sqlfluff config
+        run: |
+          cat > .sqlfluff <<EOF
+          [sqlfluff]
+          dialect = postgres
+          templater = raw
+          exclude_rules = L003,L009,L016,L031
+          max_line_length = 120
+
+          [sqlfluff:rules]
+          tab_space_size = 4
+          indent_unit = space
+
+          [sqlfluff:rules:L010]
+          capitalisation_policy = upper
+          EOF
+
+      - name: Lint SQL files
+        run: |
+          find . -name "*.sql" ! -path "*/venv/*" ! -path "*/.git/*" -type f | while read -r file; do
+            echo "Linting $file"
+            sqlfluff lint "$file" || true
+          done
+
+      - name: Check SQL syntax
+        run: |
+          find . -name "*.sql" ! -path "*/venv/*" ! -path "*/.git/*" -type f | while read -r file; do
+            echo "Checking syntax: $file"
+            sqlfluff parse "$file" || true
+          done
