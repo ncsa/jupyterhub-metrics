@@ -131,8 +131,9 @@ COMMENT ON COLUMN hourly_image_stats.container_version IS 'Container image versi
 COMMENT ON COLUMN hourly_image_stats.unique_users IS 'Number of distinct users using this image during the hour';
 COMMENT ON COLUMN hourly_image_stats.total_containers IS 'Number of distinct containers using this image during the hour';
 
--- Data retention policy (optional - keep raw data for 1 year)
-SELECT add_retention_policy('container_observations', INTERVAL '365 days');
+-- Data retention policy - DISABLED (keep all data indefinitely)
+-- Uncomment the line below to enable retention policy (e.g., keep data for 1 year):
+-- SELECT add_retention_policy('container_observations', INTERVAL '365 days');
 
 -- User session views for Grafana dashboards
 -- A session is defined as:
