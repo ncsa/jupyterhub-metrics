@@ -6,6 +6,35 @@ This document contains important rules, conventions, and structural information 
 
 ## 🚨 Critical Safety Rules
 
+### Git Commit Safety
+1. **ONLY COMMIT FILES YOU ACTIVELY WORKED ON** - This is critical
+   - When committing changes, ONLY stage and commit the specific files you created or modified
+   - NEVER use `git add -A` or `git add .` without carefully reviewing what will be committed
+   - NEVER commit files that were modified/added/deleted by other processes or users
+   - Always use `git status` to review changes before committing
+   - Use selective staging: `git add <specific-file>` for only the files you worked on
+   - Example workflow:
+     ```bash
+     # Review all changes first
+     git status
+     
+     # Only stage the specific files you modified
+     git add docker-compose.yml
+     git add AGENTS.md
+     
+     # Verify what will be committed
+     git status
+     
+     # Then commit
+     git commit -m "Update docker-compose to use chart/files/grafana"
+     ```
+
+2. **NEVER PUSH TO REMOTE** - The user handles all git push operations
+   - You may create commits with `git commit`
+   - NEVER run `git push` or `git push origin <branch>`
+   - The user will review and push commits when ready
+   - If the user asks you to "commit changes", only run `git commit`, not `git push`
+
 ### Database Safety
 1. **NEVER DROP TABLES** - Especially when upgrading or modifying schemas
    - Always use `ALTER TABLE` to modify existing tables
@@ -14,7 +43,8 @@ This document contains important rules, conventions, and structural information 
    - Example: Use `ALTER TABLE users ADD COLUMN IF NOT EXISTS department TEXT;` instead of dropping and recreating
 
 2. **NEVER DELETE DATA** - Unless explicitly requested by the user
-   - Retention policies are **DISABLED** by default - keep all data indefinitely
+   - Retention policies are **DISABLED** - keep all data indefinitely
+   - DO NOT add retention policies to `init-db.sql` or `add-policies.sql`
    - Any deletion scripts must be clearly marked and require explicit confirmation
    - When modifying data, use UPDATE instead of DELETE/INSERT where possible
 
@@ -32,14 +62,15 @@ This document contains important rules, conventions, and structural information 
 jupyterhub-metrics/
 ├── .env                          # Database credentials and configuration (DO NOT COMMIT)
 ├── .env.example                  # Template for environment variables
-├── init-db.sql                   # Main database schema definition
 ├── add-policies.sql              # TimescaleDB policies (compression, aggregates)
-├── migrate_*.sql                 # Database migration scripts (dated/versioned)
-├── fix_*.sql                     # One-off data fix scripts
-├── remove_retention_policy.sql   # Script to disable data retention
+├── migrations/                   # Database migration and fix scripts
+│   ├── migrate_*.sql             # Database migration scripts (dated/versioned)
+│   └── fix_*.sql                 # One-off data fix scripts
 ├── AGENTS.md                     # This file - guidelines for AI agents
 └── README.md                     # Project documentation
 ```
+
+**IMPORTANT**: The main database schema (`init-db.sql`) and Grafana dashboards are maintained in `chart/files/` - see Helm Chart section below.
 
 ### Python Scripts
 ```
@@ -56,7 +87,7 @@ collector/
 └── Dockerfile                    # Container for running collector
 ```
 
-### Helm Chart
+### Helm Chart (Source of Truth for Config Files)
 ```
 chart/
 ├── Chart.yaml                    # Helm chart metadata
@@ -67,18 +98,20 @@ chart/
 │   ├── service.yaml              # Database service
 │   ├── cronjob.yaml              # Collector cronjob
 │   └── configmap.yaml            # Configuration
-└── files/
-    └── init-db.sql               # Copy of main init-db.sql (keep in sync!)
+└── files/                        # **PRIMARY SOURCE** for all config files
+    ├── init-db.sql               # Main database schema (edit this, not root)
+    └── grafana/
+        ├── provisioning/         # Grafana provisioning configs
+        └── dashboards/           # Grafana dashboard JSON files
+            └── jupyterhub-demographics.json
 ```
 
-### Grafana Dashboards
-```
-grafana/dashboards/               # Grafana dashboard JSON files
-└── jupyterhub-demographics.json  # Main dashboard
+**CRITICAL**: The `chart/files/` directory is the single source of truth for:
+- Database schema (`init-db.sql`)
+- Grafana dashboards and provisioning
+- All configuration files used by both Kubernetes and local docker-compose
 
-chart/files/grafana/dashboards/   # Copy for Helm chart (keep in sync!)
-└── jupyterhub-demographics.json
-```
+Edit files in `chart/files/` directly. Do NOT create duplicates in the root directory.
 
 ### History/Testing
 ```
@@ -145,8 +178,8 @@ history/
 3. **Script Naming Conventions**
    - `export_*.py` - Scripts that export data to CSV
    - `test_*.py` - Scripts that test functionality without modifying production data
-   - `migrate_*.sql` - Database migration scripts (include date if possible)
-   - `fix_*.sql` - One-off data correction scripts
+   - `migrations/migrate_*.sql` - Database migration scripts (include date if possible)
+   - `migrations/fix_*.sql` - One-off data correction scripts
 
 4. **CSV Export Conventions**
    - Fixed filenames (no timestamps) for regular exports: `user_usage_stats.csv`
@@ -170,10 +203,10 @@ history/
    - Include examples in comments where helpful
 
 3. **Migration Scripts**
-   - Create new files for migrations (don't modify init-db.sql directly for one-off changes)
+   - Create new files in `migrations/` for migrations (don't modify chart/files/init-db.sql for one-off changes)
    - Test on a small dataset first
    - Provide verification queries at the end
-   - Example: `migrate_add_user_fields.sql`
+   - Example: `migrations/migrate_add_user_fields.sql`
 
 ### Data Transformations
 
@@ -215,19 +248,23 @@ python export_user_usage_stats.py
 
 ### Database Migrations
 
-1. Create a new migration file: `migrate_description_YYYYMMDD.sql`
+1. Create a new migration file in the migrations folder: `migrations/migrate_description_YYYYMMDD.sql`
 2. Use idempotent operations (IF EXISTS, IF NOT EXISTS)
 3. Test the migration:
    ```bash
-   psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f migrate_description.sql
+   psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f migrations/migrate_description.sql
    ```
 4. Update `chart/files/init-db.sql` if the changes should apply to new deployments
 
-### Keep Files in Sync
+### Configuration Files - Single Source of Truth
 
-When modifying these files, update BOTH locations:
-- `init-db.sql` ↔️ `chart/files/init-db.sql`
-- `grafana/dashboards/*.json` ↔️ `chart/files/grafana/dashboards/*.json`
+**All configuration files are maintained in `chart/files/`:**
+- Database schema: Edit `chart/files/init-db.sql` directly
+- Grafana dashboards: Edit `chart/files/grafana/dashboards/*.json` directly
+- Grafana provisioning: Edit `chart/files/grafana/provisioning/*` directly
+
+Both `docker-compose.yml` and Kubernetes deployments reference these files.
+**Do NOT create duplicate copies in the root directory.**
 
 ---
 
