@@ -2,21 +2,23 @@
 # ============================================================================
 # JupyterHub Metrics - Chart and Collector Update Script
 # ============================================================================
-# This script performs comprehensive updates to the Helm chart:
+# This script performs updates to the Helm chart:
 #
-# 1. Syncs source files to chart/files/ (init-db.sql, grafana configs, etc.)
-# 2. Builds and pushes the collector Docker image to ncsa/jupyterhub-metrics-collector
-# 3. Bumps the patch version in Chart.yaml if anything changed
-# 4. Collector image version automatically matches Chart version
+# 1. Builds and pushes the collector Docker image to ncsa/jupyterhub-metrics-collector
+# 2. Bumps the patch version in Chart.yaml if requested
+# 3. Collector image version automatically matches Chart version
+#
+# Note: All configuration files (init-db.sql, grafana configs) are managed
+# directly in chart/files/. There is no syncing from root directory.
 #
 # Usage:
-#   ./update-chart.sh                  # Use current Chart.yaml version, bump if changed
+#   ./update-chart.sh                  # Use current Chart.yaml version
 #   ./update-chart.sh next             # Bump to next patch version before building
 #   PUSH_TO_REGISTRY=false ./update-chart.sh  # Build only, don't push
 #
 # Arguments:
 #   next  - Immediately bump to next patch version (e.g., 1.0.0 -> 1.0.1)
-#           (default) Use current Chart.yaml version, only bump if changes detected
+#           (default) Use current Chart.yaml version
 #
 # The collector image version will automatically match the Chart.yaml version.
 #
@@ -74,7 +76,7 @@ cd "$PROJECT_ROOT"
 # Read current Chart version early (we'll use this for the collector image)
 CURRENT_VERSION=$(grep "^version:" "$CHART_YAML" | awk '{print $2}')
 
-section "Chart and Collector Update"
+section "Collector Image Build"
 log "Current Chart version: $CURRENT_VERSION"
 
 # Handle version strategy
@@ -100,71 +102,14 @@ if [[ "$VERSION_STRATEGY" == "next" ]]; then
 
     log "Chart.yaml updated to version $NEXT_VERSION"
 elif [[ "$VERSION_STRATEGY" == "current" ]]; then
-    log "Version strategy: current (bump only if changes detected)"
+    log "Version strategy: current"
     SKIP_VERSION_BUMP_ON_CHANGES=false
 else
     error "Invalid version strategy: $VERSION_STRATEGY. Use 'next' or 'current'"
 fi
 
 # ============================================================================
-# PART 1: Sync source files to chart/files/
-# ============================================================================
-
-section "Syncing Source Files to Chart"
-
-# Ensure files directory exists
-mkdir -p "$CHART_FILES_DIR"
-mkdir -p "$CHART_FILES_DIR/grafana/provisioning"
-mkdir -p "$CHART_FILES_DIR/grafana/dashboards"
-
-# Function to copy file with status message
-copy_file() {
-    local source="$1"
-    local dest="$2"
-    local description="$3"
-
-    if [[ ! -f "$source" ]]; then
-        warn "Source not found: $source ($description)"
-        return 1
-    fi
-
-    mkdir -p "$(dirname "$dest")"
-    cp "$source" "$dest"
-    echo -e "${GREEN}✓ COPIED${NC}   $description"
-    return 0
-}
-
-# Function to copy directory with status message
-copy_directory() {
-    local source="$1"
-    local dest="$2"
-    local description="$3"
-
-    if [[ ! -d "$source" ]]; then
-        warn "Source directory not found: $source ($description)"
-        return 1
-    fi
-
-    mkdir -p "$dest"
-    cp -r "$source"/* "$dest/" 2>/dev/null || true
-    echo -e "${GREEN}✓ COPIED${NC}   $description"
-    return 0
-}
-
-echo "1. Database Initialization Script"
-copy_file "$PROJECT_ROOT/init-db.sql" "$CHART_FILES_DIR/init-db.sql" "init-db.sql"
-echo ""
-
-echo "2. Grafana Provisioning Configuration"
-copy_directory "$PROJECT_ROOT/grafana/provisioning" "$CHART_FILES_DIR/grafana/provisioning" "grafana/provisioning/"
-echo ""
-
-echo "3. Grafana Dashboards"
-copy_directory "$PROJECT_ROOT/grafana/dashboards" "$CHART_FILES_DIR/grafana/dashboards" "grafana/dashboards/"
-echo ""
-
-# ============================================================================
-# PART 2: Build and push collector Docker image
+# Build and push collector Docker image
 # ============================================================================
 
 section "Building Collector Docker Image"
@@ -316,20 +261,6 @@ else
 fi
 
 # ============================================================================
-# PART 3: Check if version was already bumped
-# ============================================================================
-
-if [[ "${SKIP_VERSION_BUMP_ON_CHANGES:-false}" == "true" ]]; then
-    section "Version Already Bumped"
-    log "Chart version already updated to $CURRENT_VERSION via 'next' strategy"
-    log "Collector image will use version: $CURRENT_VERSION"
-else
-    section "Using Current Chart Version"
-    log "Chart version: $CURRENT_VERSION"
-    log "Use './update-chart.sh next' to bump version"
-fi
-
-# ============================================================================
 # Summary
 # ============================================================================
 
@@ -348,12 +279,12 @@ echo ""
 echo "Next steps:"
 echo "  1. Review changes: git status"
 if [[ "${SKIP_VERSION_BUMP_ON_CHANGES:-false}" == "true" ]]; then
-    echo "  2. Commit changes: git add chart/ && git commit -m 'chore: update helm chart to v$CURRENT_VERSION'"
+    echo "  2. Commit changes: git add chart/ && git commit -m 'chore: bump chart to v$CURRENT_VERSION'"
     echo "  3. Tag release: git tag v$CURRENT_VERSION"
 else
-    echo "  2. Commit changes: git add chart/files/"
+    echo "  2. Update chart/files/ directly for configuration changes"
 fi
-echo "  5. Deploy: helm install jupyterhub-metrics ./chart \\"
+echo "  3. Deploy: helm install jupyterhub-metrics ./chart \\"
 echo "       --set timescaledb.database.password=\$(openssl rand -base64 32) \\"
 echo "       --set grafana.adminPassword=\$(openssl rand -base64 32)"
 echo ""

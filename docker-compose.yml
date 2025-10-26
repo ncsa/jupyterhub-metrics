@@ -10,7 +10,7 @@ services:
       - "${DB_PORT}:5432"
     volumes:
       - timescale_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./chart/files/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -38,7 +38,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./chart/files/grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       timescaledb:
         condition: service_healthy
