@@ -1,12 +1,12 @@
 # Build stage
-FROM alpine:3.19 AS kubectl-builder
+FROM alpine:3.22 AS kubectl-builder
 RUN apk add --no-cache curl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     chmod +x kubectl && \
     mv kubectl /kubectl
 
 # Runtime stage
-FROM alpine:3.19
+FROM alpine:3.22
 
 # Install runtime dependencies
 RUN apk add --no-cache \
