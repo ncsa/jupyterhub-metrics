@@ -3,17 +3,18 @@
 Import historical JupyterHub container data from InfluxDB v1.x to TimescaleDB
 """
 
+import argparse
+import curses
 import os
 import sys
 import time
-import curses
-from datetime import datetime, timezone, timedelta
-from influxdb import InfluxDBClient
-import psycopg2
-from psycopg2.extras import execute_batch
-import argparse
-from typing import List, Dict, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List
 from urllib.parse import urlparse
+
+import psycopg2
+from influxdb import InfluxDBClient
+from psycopg2.extras import execute_batch
 
 # InfluxDB v1.x Configuration
 # Parse INFLUX_URL to extract host, port, and SSL settings
@@ -296,14 +297,14 @@ def build_influxql_query(
     # Query to get pod data with time-based aggregation
     # Only select the fields we actually need to reduce data volume
     # Note: Fields in GROUP BY (pod_name, node_name, etc.) are available as tags
-    query = f'''
+    query = f"""
     SELECT
         MAX("ready") AS "ready",
         MAX("status_condition") AS "status_condition"
     FROM "{measurement}"
     WHERE {where_clause}
     GROUP BY TIME({group_by_time}), "pod_name", "node_name", "container_name", "namespace", "image", "version"
-    '''
+    """
 
     return query
 

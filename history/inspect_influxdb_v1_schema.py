@@ -3,13 +3,13 @@
 Inspect InfluxDB v1.x schema to understand the Telegraf kubernetes data structure
 """
 
+import argparse
 import os
 import sys
-from influxdb import InfluxDBClient
-import argparse
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
+from influxdb import InfluxDBClient
 
 # InfluxDB v1.x Configuration
 # Parse INFLUX_URL to extract host, port, and SSL settings
@@ -486,8 +486,8 @@ def main():
 
             if time_range and time_range.get("earliest"):
                 # Calculate days back from earliest timestamp and round up to ensure we get all data
-                from datetime import datetime, timezone
                 import math
+                from datetime import datetime, timezone
 
                 earliest = datetime.fromisoformat(
                     time_range["earliest"].replace("Z", "+00:00")

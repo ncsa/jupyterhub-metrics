@@ -3,15 +3,16 @@
 Import historical JupyterHub container data from InfluxDB to TimescaleDB
 """
 
+import argparse
 import os
 import sys
 import time
-from datetime import datetime, timezone, timedelta
-from influxdb_client import InfluxDBClient
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List
+
 import psycopg2
+from influxdb_client import InfluxDBClient
 from psycopg2.extras import execute_batch
-import argparse
-from typing import List, Dict, Any
 
 # Configuration
 INFLUX_URL = os.getenv("INFLUX_URL", "http://localhost:8086")
@@ -172,7 +173,7 @@ def build_flux_query(
     The specific field doesn't matter much - we just need one field per pod to track it exists
     """
 
-    flux_query = f'''
+    flux_query = f"""
 from(bucket: "{INFLUX_BUCKET}")
   |> range(start: {start}, stop: {stop})
   |> filter(fn: (r) => r["_measurement"] == "{measurement}")
@@ -182,7 +183,7 @@ from(bucket: "{INFLUX_BUCKET}")
   |> aggregateWindow(every: {interval}, fn: last, createEmpty: false)
   |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
   |> keep(columns: ["_time", "pod_name", "container_name", "node_name", "namespace", "state", "phase", "image", "version"])
-'''
+"""
 
     return flux_query
 
