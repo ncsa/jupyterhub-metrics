@@ -3,7 +3,7 @@ name: jupyterhub-metrics
 description: A Helm chart for JupyterHub container metrics monitoring with TimescaleDB and Grafana
 type: application
 
-version: 1.1.0
+version: 1.1.1
 appVersion: "1.1.0"
 
 keywords:
