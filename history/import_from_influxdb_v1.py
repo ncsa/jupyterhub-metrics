@@ -924,7 +924,7 @@ def main():
 
     # Wrapper function for the import loop that uses curses
     def run_import_loop(stdscr=None):
-        nonlocal total_containers_inserted, total_users_inserted, total_stats
+        nonlocal total_containers_inserted, total_users_inserted
 
         # Initialize curses if available
         if stdscr:
