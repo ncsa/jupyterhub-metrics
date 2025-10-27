@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 import psycopg2
-from influxdb_client import InfluxDBClient  # pylint: disable=import-error
+from influxdb_client import InfluxDBClient
 from psycopg2.extras import execute_batch
 
 # Configuration

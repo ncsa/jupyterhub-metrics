@@ -13,7 +13,7 @@ from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 import psycopg2
-from influxdb import InfluxDBClient  # pylint: disable=import-error
+from influxdb import InfluxDBClient
 from psycopg2.extras import execute_batch
 
 # InfluxDB v1.x Configuration

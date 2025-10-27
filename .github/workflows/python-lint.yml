@@ -42,8 +42,7 @@ jobs:
           pip install flake8 pylint black isort mypy
           # Install project dependencies if they exist
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          # Install common dependencies used in the project
-          pip install psycopg2-binary httpx
+          if [ -f history/requirements.txt ]; then pip install -r history/requirements.txt; fi
 
       - name: Find Python files
         id: find-python

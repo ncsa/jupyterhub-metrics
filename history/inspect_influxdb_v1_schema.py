@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
-from influxdb import InfluxDBClient  # pylint: disable=import-error
+from influxdb import InfluxDBClient
 
 # InfluxDB v1.x Configuration
 # Parse INFLUX_URL to extract host, port, and SSL settings
