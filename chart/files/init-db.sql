@@ -7,6 +7,8 @@ CREATE TABLE users (
     email TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     full_name TEXT,
+    department TEXT,
+    job_title TEXT,
     first_seen TIMESTAMPTZ DEFAULT NOW(),
     last_seen TIMESTAMPTZ DEFAULT NOW()
 );
@@ -19,6 +21,8 @@ COMMENT ON TABLE users IS 'User mapping table - maps email addresses to user IDs
 COMMENT ON COLUMN users.email IS 'User email address from GIT_AUTHOR_EMAIL environment variable (primary key)';
 COMMENT ON COLUMN users.user_id IS 'User ID extracted from pod name (jupyter-{user_id}-...)';
 COMMENT ON COLUMN users.full_name IS 'Full name from GIT_AUTHOR_NAME environment variable';
+COMMENT ON COLUMN users.department IS 'User department from Microsoft Graph API';
+COMMENT ON COLUMN users.job_title IS 'User job title from Microsoft Graph API';
 COMMENT ON COLUMN users.first_seen IS 'Timestamp when user was first observed';
 COMMENT ON COLUMN users.last_seen IS 'Timestamp when user was last observed (updated on each data collection)';
 
