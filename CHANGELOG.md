@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Added `department` and `job_title` columns to users table schema
+- Created jupyterhub-demographics.json Grafana dashboard
+
+### Fixed
+- Removed unused placeholder secret when external secrets are enabled
+- Corrected permissions for helm chart upload
+- Use sha- prefix for docker tags to avoid invalid tags in releases
+
 ## [1.1.0] - 2025-10-26
 
 ### Added
