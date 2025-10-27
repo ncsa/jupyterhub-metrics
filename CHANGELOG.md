@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-26
+
+### Added
+
+- Use GitHub Container Registry for collector images.
+- Add comprehensive GitHub Actions workflows for CI/CD.
+
+### Changed
+
+- Enforced code quality with Black, isort, Pylint, and mypy.
+
+### Fixed
+
+- Resolved various linting and type errors in Python scripts and shell scripts.
+- Corrected file permissions on shell scripts.
+- Fixed issues with the markdown linting configuration.
+
 ## [1.0.0] - 2025-10-26
 
 ### Initial Release
