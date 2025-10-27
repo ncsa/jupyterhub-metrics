@@ -124,7 +124,7 @@ jobs:
           fi
 
       - name: Upload Bandit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always() && steps.find-python-security.outputs.has_python_files == 'true'
         with:
           name: bandit-security-report
