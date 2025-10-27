@@ -15,15 +15,14 @@ A Helm chart for Kubernetes that deploys a complete JupyterHub metrics monitorin
 ### Add the Helm Repository
 
 ```bash
-# If using a remote repository (update with your actual repository URL)
-helm repo add jupyterhub-metrics https://example.com/charts
+helm repo add ncsa https://opensource.ncsa.illinois.edu/charts/
 helm repo update
 ```
 
 ### Install the Chart
 
 ```bash
-helm install my-release jupyterhub-metrics/jupyterhub-metrics \
+helm install my-release ncsa/jupyterhub-metrics \
   --namespace jupyterhub-metrics \
   --create-namespace \
   --set timescaledb.database.password="$(openssl rand -base64 32)" \
@@ -285,6 +284,109 @@ helm install my-release ./chart \
   --set grafana.adminPassword="my-secure-grafana-password" \
   --set grafana.persistence.size="10Gi"
 ```
+
+### Installation with External Secrets
+
+When using an external secrets management solution (e.g., External Secrets Operator with AWS Secrets Manager, HashiCorp Vault, etc.), you can reference an existing Kubernetes Secret instead of having Helm create one.
+
+**Important:** When `secrets.externalSecretEnabled: true`, the chart will NOT create a Secret resource. You must ensure your external secret exists before installation.
+
+#### Prerequisites
+
+1. Install External Secrets Operator (or your secret management solution)
+2. Create an ExternalSecret that syncs to a Kubernetes Secret with these required keys:
+   - `POSTGRES_DB` - Database name
+   - `POSTGRES_USER` - Database username
+   - `POSTGRES_PASSWORD` - Database password
+   - `GF_SECURITY_ADMIN_USER` - Grafana admin username
+   - `GF_SECURITY_ADMIN_PASSWORD` - Grafana admin password
+
+#### Example: Using External Secrets Operator with AWS Secrets Manager
+
+```bash
+# Step 1: Create ExternalSecret resource
+cat <<EOF | kubectl apply -f -
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: jupyterhub-metrics-secrets
+  namespace: jupyterhub-metrics
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: SecretStore
+  target:
+    name: jupyterhub-metrics-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: POSTGRES_DB
+      remoteRef:
+        key: jupyterhub-metrics/database
+        property: database_name
+    - secretKey: POSTGRES_USER
+      remoteRef:
+        key: jupyterhub-metrics/database
+        property: database_user
+    - secretKey: POSTGRES_PASSWORD
+      remoteRef:
+        key: jupyterhub-metrics/database
+        property: database_password
+    - secretKey: GF_SECURITY_ADMIN_USER
+      remoteRef:
+        key: jupyterhub-metrics/grafana
+        property: admin_user
+    - secretKey: GF_SECURITY_ADMIN_PASSWORD
+      remoteRef:
+        key: jupyterhub-metrics/grafana
+        property: admin_password
+EOF
+
+# Step 2: Install the chart referencing the external secret
+helm install my-release ./chart \
+  --namespace jupyterhub-metrics \
+  --create-namespace \
+  --set secrets.externalSecretEnabled=true \
+  --set secrets.externalSecretName="jupyterhub-metrics-secrets"
+```
+
+#### Example: Using a Pre-existing Kubernetes Secret
+
+If you have a Kubernetes Secret already created (not managed by External Secrets Operator):
+
+```bash
+# Step 1: Create the secret manually
+kubectl create secret generic my-jupyterhub-secrets \
+  --namespace jupyterhub-metrics \
+  --from-literal=POSTGRES_DB=jupyterhub_metrics \
+  --from-literal=POSTGRES_USER=metrics_user \
+  --from-literal=POSTGRES_PASSWORD="$(openssl rand -base64 32)" \
+  --from-literal=GF_SECURITY_ADMIN_USER=admin \
+  --from-literal=GF_SECURITY_ADMIN_PASSWORD="$(openssl rand -base64 32)"
+
+# Step 2: Install the chart referencing the external secret
+helm install my-release ./chart \
+  --namespace jupyterhub-metrics \
+  --create-namespace \
+  --set secrets.externalSecretEnabled=true \
+  --set secrets.externalSecretName="my-jupyterhub-secrets"
+```
+
+#### Using Custom Secret Key Names
+
+If your external secret uses different key names for passwords:
+
+```bash
+helm install my-release ./chart \
+  --namespace jupyterhub-metrics \
+  --create-namespace \
+  --set secrets.externalSecretEnabled=true \
+  --set secrets.externalSecretName="my-jupyterhub-secrets" \
+  --set secrets.externalSecretDbPasswordKey="db-password" \
+  --set secrets.externalSecretGrafanaPasswordKey="grafana-admin-password"
+```
+
+**Note:** When using custom key names, your secret must still contain `POSTGRES_DB`, `POSTGRES_USER`, `GF_SECURITY_ADMIN_USER` with those exact names. Only the password keys can be customized.
 
 ### Installation Using Values File
 
