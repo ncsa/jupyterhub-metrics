@@ -20,6 +20,7 @@ fi
 
 # Load the configuration
 set -a
+# shellcheck source=/dev/null
 source "$ENV_FILE"
 set +a
 

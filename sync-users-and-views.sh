@@ -45,7 +45,8 @@ sync_users() {
     log "Synchronizing users table from container_observations..."
 
     # Get counts before
-    local users_before=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
+    local users_before
+    users_before=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
 
     # Upsert users from container_observations
     # Extract user_id from pod_name, use email prefix as fallback for full_name
@@ -79,7 +80,8 @@ ON CONFLICT (email) DO UPDATE SET
 EOF
 
     if [ $? -eq 0 ]; then
-        local users_after=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
+        local users_after
+        users_after=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM users;" | xargs)
         local new_users=$((users_after - users_before))
         log "✓ Users table synchronized"
         log "  Users before: $users_before"
@@ -95,11 +97,13 @@ EOF
 refresh_sessions_view() {
     log "Refreshing user_sessions materialized view..."
 
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
 
     if psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "REFRESH MATERIALIZED VIEW CONCURRENTLY user_sessions;" > /dev/null 2>&1; then
         local elapsed=$(($(date +%s) - start_time))
-        local session_count=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM user_sessions;" | xargs)
+        local session_count
+        session_count=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM user_sessions;" | xargs)
         log "✓ user_sessions view refreshed in ${elapsed}s"
         log "  Total sessions: $session_count"
     else
@@ -113,15 +117,18 @@ refresh_continuous_aggregates() {
     log "Refreshing continuous aggregates..."
 
     # Get time range from container_observations
-    local time_range=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT MIN(timestamp), MAX(timestamp) FROM container_observations;" | xargs)
+    local time_range
+    time_range=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT MIN(timestamp), MAX(timestamp) FROM container_observations;" | xargs)
 
     if [[ -z "$time_range" || "$time_range" == "|" ]]; then
         log "  No data in container_observations, skipping continuous aggregates"
         return
     fi
 
-    local start_time=$(echo "$time_range" | cut -d'|' -f1 | xargs)
-    local end_time=$(echo "$time_range" | cut -d'|' -f2 | xargs)
+    local start_time
+    start_time=$(echo "$time_range" | cut -d'|' -f1 | xargs)
+    local end_time
+    end_time=$(echo "$time_range" | cut -d'|' -f2 | xargs)
 
     log "  Time range: $start_time to $end_time"
 

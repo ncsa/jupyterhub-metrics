@@ -47,14 +47,18 @@ wait_for_db() {
 }
 
 collect_metrics() {
-    local timestamp=$(date -u +"%Y-%m-%d %H:%M:%S")
-    local now=$(date +%s)
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%d %H:%M:%S")
+    local now
+    now=$(date +%s)
 
     log "Collecting metrics at $timestamp"
 
     # Create temporary files for batch insert
-    local temp_file=$(mktemp)
-    local users_file=$(mktemp)
+    local temp_file
+    temp_file=$(mktemp)
+    local users_file
+    users_file=$(mktemp)
 
     # Fetch pod data using kubectl
     # Use --context flag if KUBECTL_CONTEXT is set (for local development)
@@ -96,8 +100,10 @@ collect_metrics() {
     grep -v -E "^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}" "$temp_file" > "$users_file" || true
     mv "${temp_file}.obs" "$temp_file"
 
-    local count=$(wc -l < "$temp_file")
-    local user_count=$(wc -l < "$users_file")
+    local count
+    count=$(wc -l < "$temp_file")
+    local user_count
+    user_count=$(wc -l < "$users_file")
 
     if [ "$count" -eq 0 ]; then
         log "No running containers found"

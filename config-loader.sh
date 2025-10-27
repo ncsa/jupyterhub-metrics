@@ -43,6 +43,7 @@ fi
 # ============================================================================
 # Source the .env file, allowing it to override any existing environment variables
 set -a
+# shellcheck source=/dev/null
 source "$ENV_FILE"
 set +a
 

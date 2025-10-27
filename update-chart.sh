@@ -67,8 +67,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Project root
 PROJECT_ROOT="$SCRIPT_DIR"
 
-# Chart files directory
-CHART_FILES_DIR="$SCRIPT_DIR/chart/files"
+# Chart YAML file
 CHART_YAML="$SCRIPT_DIR/chart/Chart.yaml"
 
 cd "$PROJECT_ROOT"
