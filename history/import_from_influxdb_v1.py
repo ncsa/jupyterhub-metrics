@@ -411,7 +411,9 @@ def estimate_pod_age(timestamp: str, pod_name: str, all_records: List[Dict]) -> 
     return 0
 
 
-def transform_records(records: List[Dict[str, Any]]) -> List[tuple]:
+def transform_records(
+    records: List[Dict[str, Any]],
+) -> tuple[List[tuple], Dict[str, int]]:
     """Transform InfluxDB records to PostgreSQL format"""
     transformed = []
     skipped_no_pod_name = 0

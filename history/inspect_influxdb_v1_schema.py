@@ -396,7 +396,7 @@ def find_jupyterhub_pods(
                     if test_result:
                         test_points = list(test_result.get_points())
                         jupyter_found = any(
-                            "jupyter" in str(p).get("pod_name", "")
+                            "jupyter" in str(p.get("pod_name", ""))
                             for p in test_points
                             if "pod_name" in p
                         )
