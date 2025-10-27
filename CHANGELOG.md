@@ -8,10 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.1] - 2025-10-27
 
 ### Added
+
 - Added `department` and `job_title` columns to users table schema
 - Created jupyterhub-demographics.json Grafana dashboard
 
 ### Fixed
+
 - Removed unused placeholder secret when external secrets are enabled
 - Corrected permissions for helm chart upload
 - Use sha- prefix for docker tags to avoid invalid tags in releases
