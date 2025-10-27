@@ -13,7 +13,7 @@ from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 import psycopg2
-from influxdb import InfluxDBClient
+from influxdb import InfluxDBClient  # pylint: disable=import-error
 from psycopg2.extras import execute_batch
 
 # InfluxDB v1.x Configuration
@@ -920,6 +920,7 @@ def main():
     }
 
     # Connect to PostgreSQL for incremental inserts
+    pg_conn = None
     if not args.dry_run:
         pg_conn = get_pg_connection()
 

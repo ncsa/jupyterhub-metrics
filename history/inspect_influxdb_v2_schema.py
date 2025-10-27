@@ -7,7 +7,7 @@ import argparse
 import os
 import sys
 
-from influxdb_client import InfluxDBClient
+from influxdb_client import InfluxDBClient  # pylint: disable=import-error
 
 INFLUX_URL = os.getenv("INFLUX_URL", "http://localhost:8086")
 INFLUX_TOKEN = os.getenv("INFLUX_TOKEN", "")
