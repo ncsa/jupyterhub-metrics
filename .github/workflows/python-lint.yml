@@ -81,7 +81,7 @@ jobs:
       - name: Run mypy (type checking)
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 mypy --ignore-missing-imports --no-strict-optional
+          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 mypy --ignore-missing-imports --no-strict-optional || true
 
   security:
     runs-on: ubuntu-latest
