@@ -51,7 +51,7 @@ jobs:
     needs: lint
     if: github.event_name == 'release'
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
