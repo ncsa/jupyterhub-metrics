@@ -199,11 +199,11 @@ collector:
   interval: "300"  # 5 minutes
 
   # Collector image configuration
-  # Built and pushed by update-chart.sh
+  # Uses GitHub Container Registry image built by CI/CD
   # Image version is automatically set to Chart.Version (from Chart.yaml)
   # No synchronization needed - Helm uses Chart.Version directly
   image:
-    repository: ncsa/jupyterhub-metrics-collector
+    repository: ghcr.io/ncsa/jupyterhub-metrics/collector
     pullPolicy: IfNotPresent
 
   # Resource requests and limits

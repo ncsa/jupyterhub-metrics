@@ -45,6 +45,8 @@ services:
     restart: unless-stopped
 
   collector:
+    # Use pre-built image from GitHub Container Registry, or build locally if not available
+    image: ghcr.io/ncsa/jupyterhub-metrics/collector:latest
     build:
       context: ./collector
       dockerfile: Dockerfile
