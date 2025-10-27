@@ -53,7 +53,7 @@ jobs:
             # Tag with major version on release (e.g., v1.0.0 -> 1)
             type=semver,pattern={{major}}
             # Tag with SHA for traceability
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
