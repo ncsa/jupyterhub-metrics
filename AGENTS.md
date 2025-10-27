@@ -237,6 +237,21 @@ history/
    - Provide verification queries at the end
    - Example: `migrations/migrate_add_user_fields.sql`
 
+### YAML Files (values.yaml, workflows)
+
+1. **Comment Spacing - CRITICAL**
+   - **ALWAYS use 2 spaces before inline comments** (the `#` character)
+   - Correct: `key: "value"  # comment` (2 spaces)
+   - Wrong: `key: "value" # comment` (1 space - will fail yamllint)
+   - This applies to ALL YAML files, especially `chart/values.yaml`
+   - Lines to watch in values.yaml: 59, 151, 199 (these have inline comments)
+   - When using Edit tool, preserve exact spacing of inline comments
+
+2. **Why This Matters**
+   - yamllint requires at least 2 spaces before inline comments
+   - Helm linting will fail if spacing is incorrect
+   - CI/CD workflows check this automatically
+
 ### Data Transformations
 
 1. **Special Cases to Remember**
