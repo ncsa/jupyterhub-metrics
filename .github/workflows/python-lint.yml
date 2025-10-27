@@ -62,30 +62,28 @@ jobs:
       - name: Run Black (code formatter check)
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -exec black --check --diff {} + || true
+          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -exec black --check --diff {} +
 
       - name: Run isort (import sorting check)
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -exec isort --check-only --diff {} + || true
+          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -exec isort --check-only --diff {} +
 
-      - name: Run Flake8 (style guide enforcement)
+      - name: Run Flake8 (syntax errors only)
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
           # Stop the build if there are Python syntax errors or undefined names
           find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 flake8 --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Treat all other issues as warnings
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 flake8 --count --max-complexity=15 --max-line-length=120 --statistics --exit-zero
 
       - name: Run Pylint (static analysis)
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 pylint --exit-zero --max-line-length=120 --disable=C0114,C0115,C0116
+          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 pylint --max-line-length=120 --disable=C0114,C0115,C0116
 
       - name: Run mypy (type checking)
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 mypy --ignore-missing-imports --no-strict-optional || true
+          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 mypy --ignore-missing-imports --no-strict-optional
 
   security:
     runs-on: ubuntu-latest
