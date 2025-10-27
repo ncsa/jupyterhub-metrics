@@ -20,6 +20,7 @@ This project now includes 8 comprehensive GitHub Actions workflows plus Dependab
 ### Dependabot Configuration
 
 Automated dependency updates for:
+
 - GitHub Actions (weekly)
 - Docker base images (weekly)
 - Python packages (weekly)
@@ -27,6 +28,7 @@ Automated dependency updates for:
 ## Image Registry
 
 ### Collector Image
+
 ```bash
 # Latest
 ghcr.io/ncsa/jupyterhub-metrics/collector:latest
@@ -36,6 +38,7 @@ ghcr.io/ncsa/jupyterhub-metrics/collector:1.0.0
 ```
 
 ### Helm Chart
+
 ```bash
 # Install from GHCR OCI registry
 helm install jupyterhub-metrics \
@@ -46,12 +49,14 @@ helm install jupyterhub-metrics \
 ## Release Process
 
 1. **Update versions:**
+
    ```bash
    # Update chart/Chart.yaml (version and appVersion)
    # Update CHANGELOG.md
    ```
 
 2. **Commit and tag:**
+
    ```bash
    git add chart/Chart.yaml CHANGELOG.md
    git commit -m "chore: prepare release v1.0.0"
@@ -69,6 +74,7 @@ helm install jupyterhub-metrics \
 ## Security Features
 
 ### Automated Scanning
+
 - **CodeQL**: Weekly code security analysis
 - **Trivy**: Container vulnerability scanning
 - **TruffleHog**: Secret detection in git history
@@ -76,6 +82,7 @@ helm install jupyterhub-metrics \
 - **Dependency Review**: PR-based dependency checks
 
 ### Supply Chain Security
+
 - Build attestations for Docker images
 - Multi-platform builds (amd64, arm64)
 - SBOM generation support ready
@@ -137,6 +144,7 @@ All workflows use the built-in `GITHUB_TOKEN` - no secret configuration required
 ## Support
 
 For workflow issues:
+
 - Check workflow logs in Actions tab
 - Review `.github/workflows/README.md` for detailed documentation
 - Test workflows manually using "Run workflow" button

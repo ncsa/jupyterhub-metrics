@@ -5,11 +5,13 @@ This document describes the queries used in the Grafana dashboards and how the s
 ## Data Architecture
 
 ### Materialized View: `user_sessions`
+
 - Pre-computed session data for fast queries
 - Automatically refreshed after each data collection (~5 minutes)
 - Query performance: < 100ms (vs 2-3 seconds with regular views)
 
 ### Regular View: `user_session_stats`
+
 - Aggregated all-time statistics per user
 - Built on top of `user_sessions` materialized view
 - Used for quick lookups of total hours, sessions, etc.
@@ -17,6 +19,7 @@ This document describes the queries used in the Grafana dashboards and how the s
 ## Session Definition
 
 A session is defined as:
+
 - Continuous observations of the same **pod on the same node**
 - With **no more than 1 hour gap** between observations
 - If a pod moves to a different node, it starts a **new session**
@@ -24,6 +27,7 @@ A session is defined as:
 This ensures accurate tracking of GPU vs CPU usage since node changes are treated as separate sessions.
 
 GPU vs CPU classification:
+
 - **GPU hours**: Sessions where `node_name NOT ILIKE '%cpu%'` (e.g., cori-prod-worker-a100-XX)
 - **CPU hours**: Sessions where `node_name ILIKE '%cpu%'` (e.g., cori-prod-worker-cpu-XX)
 
@@ -32,6 +36,7 @@ GPU vs CPU classification:
 All queries filter by time range to show only sessions within the selected dashboard time window.
 
 ### Stat Panels (Total Hours, GPU Hours, CPU Hours, Sessions, Applications)
+
 ```sql
 -- Total Hours
 SELECT 
@@ -77,6 +82,7 @@ WHERE user_email = '$user'
 ```
 
 ### User Sessions Table
+
 ```sql
 SELECT
   session_start AS "Session Start",
@@ -94,6 +100,7 @@ ORDER BY session_start DESC;
 ## Overview Dashboard Queries
 
 ### Top Users by Runtime (Table)
+
 ```sql
 SELECT
   us.user_email AS "User Email",
@@ -111,6 +118,7 @@ LIMIT 50;
 ```
 
 ### Application Usage (Table)
+
 ```sql
 SELECT
   container_base AS "Application",
@@ -125,6 +133,7 @@ ORDER BY "Total Sessions" DESC;
 ```
 
 ### Active Users Over Time (Time Series)
+
 ```sql
 SELECT
   time_bucket('$__interval', timestamp) AS time,
@@ -136,6 +145,7 @@ ORDER BY time;
 ```
 
 ### Applications per Node Over Time (Time Series)
+
 ```sql
 SELECT
   time_bucket('$__interval', timestamp) AS time,
@@ -165,12 +175,14 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY user_sessions;
 ```
 
 Manual refresh (if needed):
+
 ```bash
 psql -h localhost -U metrics_user -d jupyterhub_metrics \
   -c "REFRESH MATERIALIZED VIEW CONCURRENTLY user_sessions;"
 ```
 
 Check materialized view size and row count:
+
 ```sql
 SELECT 
   pg_size_pretty(pg_total_relation_size('user_sessions')) AS size,

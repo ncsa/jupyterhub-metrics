@@ -58,6 +58,7 @@ chmod 600 .env
 ### Environment Variables by Component
 
 #### Database (TimescaleDB/PostgreSQL)
+
 ```bash
 DB_HOST          # Hostname or IP
 DB_PORT          # Port number (default: 5432)
@@ -67,6 +68,7 @@ DB_PASSWORD      # Database password
 ```
 
 #### Grafana
+
 ```bash
 GRAFANA_ADMIN_USER       # Grafana admin username
 GRAFANA_ADMIN_PASSWORD   # Grafana admin password
@@ -74,6 +76,7 @@ GRAFANA_PORT             # Grafana port (default: 3000)
 ```
 
 #### Collector Service
+
 ```bash
 COLLECTION_INTERVAL      # Seconds between metric collections
 KUBECTL_CONTEXT          # Kubernetes context name
@@ -81,6 +84,7 @@ NAMESPACE                # Kubernetes namespace to monitor
 ```
 
 #### Kubernetes Deployment (Optional)
+
 ```bash
 K8S_NAMESPACE            # K8s namespace for deployment
 TIMESCALEDB_STORAGE_SIZE # Storage allocation
@@ -89,6 +93,7 @@ INGRESS_HOST             # Ingress hostname
 ```
 
 #### InfluxDB (For Migration Scripts)
+
 ```bash
 INFLUX_HOST              # InfluxDB hostname
 INFLUX_PORT              # InfluxDB port
@@ -106,6 +111,7 @@ INFLUX_VERIFY_SSL        # Verify SSL cert (true/false)
 All shell scripts are designed to work in multiple environments:
 
 **For Docker Compose:**
+
 ```bash
 # .env file exists, so config-loader.sh is sourced
 source ./config-loader.sh
@@ -115,11 +121,13 @@ echo "Connecting to $DB_HOST as $DB_USER"
 ```
 
 **For Kubernetes:**
+
 - No `.env` file exists in the container
 - Environment variables are injected via Kubernetes Secrets/ConfigMaps
 - Scripts set safe defaults and validate required variables are set
 
 The `config-loader.sh` script (Docker Compose only):
+
 - Loads `.env` file from project root
 - Validates that required variables are set
 - Validates that port numbers are numeric
@@ -127,6 +135,7 @@ The `config-loader.sh` script (Docker Compose only):
 - Fails with clear error messages if configuration is invalid
 
 **Example: collector.sh works in both environments**
+
 ```bash
 # If .env exists (Docker Compose), load it
 if [[ -f "$ENV_FILE" ]]; then
@@ -258,7 +267,7 @@ source .env.prod
 
 ### Error: "Configuration file not found"
 
-```
+```text
 ERROR: Configuration file not found: /path/to/.env
 Please create a .env file by copying .env.example:
   cp .env.example .env
@@ -269,7 +278,7 @@ Then edit .env with your actual configuration values.
 
 ### Error: "Required configuration variables not set"
 
-```
+```text
 ERROR: The following required configuration variables are not set:
   - DB_PASSWORD
   - GRAFANA_ADMIN_PASSWORD
@@ -279,7 +288,7 @@ ERROR: The following required configuration variables are not set:
 
 ### Error: "Port must be a number"
 
-```
+```text
 ERROR: DB_PORT must be a number, got: not_a_number
 ```
 
@@ -287,7 +296,8 @@ ERROR: DB_PORT must be a number, got: not_a_number
 
 ### Docker Compose not picking up `.env` values
 
-**Solution:** 
+**Solution:**
+
 1. Verify `.env` file exists in the same directory as `docker-compose.yml`
 2. Run `docker-compose config` to see if variables are substituted
 3. Ensure variable names in `.env` match those in `docker-compose.yml`
@@ -340,6 +350,7 @@ For Kubernetes deployments, use the `k8s/deploy.sh` script which reads from `.en
 If you're upgrading from hardcoded configurations, follow these steps:
 
 1. **Create `.env` file:**
+
    ```bash
    cp .env.example .env
    ```
@@ -350,11 +361,13 @@ If you're upgrading from hardcoded configurations, follow these steps:
    - From application configuration files
 
 3. **Update `.env` with extracted values:**
+
    ```bash
    nano .env
    ```
 
 4. **Verify scripts load correctly:**
+
    ```bash
    # Test collector script in Docker Compose
    docker-compose up collector  # Should work if config is correct
@@ -364,6 +377,7 @@ If you're upgrading from hardcoded configurations, follow these steps:
    ```
 
 5. **Update version control:**
+
    ```bash
    # Verify .env is in .gitignore
    git status
@@ -375,6 +389,7 @@ If you're upgrading from hardcoded configurations, follow these steps:
    ```
 
 6. **Remove hardcoded credentials from git history:**
+
    ```bash
    # Use git-filter-branch or BFG repo cleaner to remove sensitive data
    # See: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository

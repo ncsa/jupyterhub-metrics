@@ -5,15 +5,17 @@ All GitHub workflows have been tested locally before committing. Here are the re
 ## ✅ Tests Passed
 
 ### 1. YAML Linting (`yamllint`)
+
 - **Status**: PASSED
 - **Files tested**: All workflow files in `.github/workflows/`, `chart/*.yaml`
 - **Configuration**: `.yamllint.yml` created
-- **Notes**: 
+- **Notes**:
   - Helm chart templates (`.github/templates/`) are excluded (Go templating syntax)
   - Minor warnings in `chart/values.yaml` (pre-existing, cosmetic only)
   - All workflow YAML files are valid and lint-clean
 
 ### 2. Markdown Linting (`markdownlint-cli2`)
+
 - **Status**: PASSED (with config)
 - **Files tested**: All `**/*.md` files
 - **Configuration**: `.markdownlint.json` created
@@ -23,6 +25,7 @@ All GitHub workflows have been tested locally before committing. Here are the re
 - **Notes**: Documentation files follow consistent formatting
 
 ### 3. JSON Validation (`jq`)
+
 - **Status**: PASSED
 - **Files tested**:
   - Grafana dashboards in `chart/files/grafana/dashboards/`
@@ -30,6 +33,7 @@ All GitHub workflows have been tested locally before committing. Here are the re
 - **Notes**: All JSON files are valid and parse correctly
 
 ### 4. Shell Script Linting (`shellcheck`)
+
 - **Status**: PASSED (warnings only)
 - **Files tested**: All `*.sh` files
 - **Configuration**: `-e SC1091` (ignore source file warnings)
@@ -40,6 +44,7 @@ All GitHub workflows have been tested locally before committing. Here are the re
 - **Critical issues**: NONE
 
 ### 5. SQL Linting (`sqlfluff`)
+
 - **Status**: PASSED (warnings only)
 - **Files tested**: `*.sql` files in migrations and chart/files
 - **Configuration**: PostgreSQL dialect
@@ -47,6 +52,7 @@ All GitHub workflows have been tested locally before committing. Here are the re
 - **Notes**: Workflow configured with `|| true` to not fail on style issues
 
 ### 6. Python Code Quality (`flake8`, `black`)
+
 - **Status**: PASSED
 - **Files tested**: All `*.py` files in root directory
 - **Tests run**:
@@ -80,6 +86,7 @@ All workflows are configured to be **non-blocking for existing code issues**:
 5. **Markdown linting**: Will report issues but not block merges
 
 This ensures workflows:
+
 - ✅ Catch syntax errors and critical issues
 - ✅ Report style improvements
 - ✅ Don't block on pre-existing code

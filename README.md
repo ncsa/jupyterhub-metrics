@@ -12,7 +12,7 @@ A complete monitoring solution for tracking JupyterHub container usage with Time
 
 ## Architecture
 
-```
+```text
 ┌─────────────────┐
 │  Kubernetes     │
 │  (JupyterHub)   │
@@ -38,6 +38,7 @@ A complete monitoring solution for tracking JupyterHub container usage with Time
 Deploy the entire system directly in your Kubernetes cluster using the included Helm chart.
 
 **Advantages:**
+
 - No external kubectl configuration needed
 - Automatic service discovery
 - Native Kubernetes RBAC integration
@@ -46,6 +47,7 @@ Deploy the entire system directly in your Kubernetes cluster using the included 
 - Easy upgrades and rollbacks with Helm
 
 **Configuration in Kubernetes:**
+
 - All sensitive data is stored in Kubernetes Secrets
 - Scripts automatically use environment variables injected by Kubernetes
 - No `.env` file needed in the container
@@ -53,6 +55,7 @@ Deploy the entire system directly in your Kubernetes cluster using the included 
 See **[chart/README.md](chart/README.md)** for detailed Helm chart documentation.
 
 **Quick deploy:**
+
 ```bash
 # Install with Helm
 helm install jupyterhub-metrics ./chart \
@@ -84,6 +87,7 @@ helm install jupyterhub-metrics ./chart \
 ```
 
 The `update-chart.sh` script:
+
 - Syncs source files (init-db.sql, Grafana configs) to chart/files/
 - Builds multi-architecture Docker images from `collector/Dockerfile`
   - **linux/amd64** (x86 - Intel/AMD)
@@ -96,6 +100,7 @@ The `update-chart.sh` script:
 - Falls back to single-arch build if buildx not available
 
 **Typical workflow:**
+
 ```bash
 # 1. Make changes to collector.sh, init-db.sql, or grafana configs
 # 2. Run update script (bumps chart version automatically)
@@ -121,6 +126,7 @@ helm install jupyterhub-metrics ./chart
 Run TimescaleDB and Grafana in Docker, with the collector using your local kubectl configuration.
 
 **Advantages:**
+
 - Easier local development and testing
 - Can monitor multiple clusters
 - No cluster permissions needed for database/Grafana
@@ -146,9 +152,10 @@ mkdir -p jupyterhub-metrics/{grafana/{provisioning/{datasources,dashboards},dash
 cd jupyterhub-metrics
 ```
 
-2. **Create all configuration files:**
+1. **Create all configuration files:**
 
 Save the following files in your directory:
+
 - `docker-compose.yml`
 - `collector/Dockerfile` (in collector subfolder)
 - `collector/collector.sh` (in collector subfolder)
@@ -158,7 +165,7 @@ Save the following files in your directory:
 - `grafana/provisioning/dashboards/dashboards.yml`
 - `grafana/dashboards/jupyterhub-overview.json`
 
-3. **Set up centralized configuration:**
+1. **Set up centralized configuration:**
 
 ```bash
 # Copy configuration template
@@ -169,6 +176,7 @@ nano .env
 ```
 
 Update the following in `.env`:
+
 - `DB_PASSWORD`: Secure database password
 - `GRAFANA_ADMIN_PASSWORD`: Secure Grafana password
 - `DB_HOST`: Database hostname (default: `localhost` for Docker Compose)
@@ -177,22 +185,23 @@ Update the following in `.env`:
 
 See [SECURITY.md](SECURITY.md) for detailed configuration instructions.
 
-4. **Start the services:**
+1. **Start the services:**
 
 ```bash
 docker-compose up -d
 ```
 
-5. **Verify services are running:**
+1. **Verify services are running:**
 
 ```bash
 docker-compose ps
 docker-compose logs -f
 ```
 
-6. **Access Grafana:**
+1. **Access Grafana:**
 
 Open your browser to `http://localhost:3000`
+
 - Username: (value from `GRAFANA_ADMIN_USER` in `.env`)
 - Password: (value from `GRAFANA_ADMIN_PASSWORD` in `.env`)
 
@@ -207,6 +216,7 @@ All configuration is managed through a centralized `.env` file. This approach ke
 Quick overview:
 
 1. **Create `.env` from template:**
+
    ```bash
    cp .env.example .env
    nano .env  # Edit with your values
@@ -291,17 +301,18 @@ docker-compose restart collector
 
 1. **For a single container session**: Take the MAX(age_seconds) for that pod_name
    - Example: Pod runs for 2 hours, sampled every 5 min → MAX gives you 7200 seconds (2 hours)
-   
+
 2. **For multiple sessions**: Sum the MAX age of each unique pod_name
    - Session 1: Pod `jupyter-user1-abc123` runs 2 hours → 7200 seconds
    - Session 2: Pod `jupyter-user1-xyz789` runs 3 hours → 10800 seconds
    - **Total runtime: 5 hours** (not the sum of all observations!)
 
-3. **Why this matters**: 
+3. **Why this matters**:
    - ❌ Wrong: `SUM(age_seconds)` counts every observation → massive over-counting
    - ✅ Correct: `SUM(MAX(age_seconds) per pod)` counts each session once
 
 **Example scenario:**
+
 - User starts container at 10:00 AM
 - We sample at: 10:05 (age=300s), 10:10 (age=600s), 10:15 (age=900s)
 - User stops container at 10:15 AM
@@ -311,10 +322,12 @@ docker-compose restart collector
 ### Database Schema
 
 **Tables:**
+
 - `users`: User mapping table (email, user_id, full_name)
 - `container_observations`: Raw time-series observations (TimescaleDB hypertable)
 
 **Views:**
+
 - `user_sessions`: Pre-computed user sessions (materialized view, refreshed automatically)
 - `user_session_stats`: Aggregated session statistics per user
 - `hourly_node_stats`: Containers per node aggregated hourly (TimescaleDB continuous aggregate)
@@ -339,6 +352,7 @@ The system includes a comprehensive dashboard showing:
 ### Customizing Time Windows
 
 Use the time picker in the top-right corner:
+
 - **Quick ranges**: Last 5m, 15m, 1h, 6h, 12h, 24h, 7d, 30d, 90d
 - **Custom ranges**: Select specific start and end dates
 - **Refresh rate**: Auto-refresh every 30s (configurable)
@@ -452,12 +466,14 @@ ORDER BY week, unique_users DESC;
 ### Backup Database
 
 Using the provided backup script (recommended):
+
 ```bash
 ./dump-database.sh
 # Creates backup in ./backups/ directory
 ```
 
 Manual backup:
+
 ```bash
 source ./config-loader.sh
 docker exec jupyterhub-timescaledb pg_dump -U $DB_USER $DB_NAME > backup_$(date +%Y%m%d).sql
@@ -466,11 +482,13 @@ docker exec jupyterhub-timescaledb pg_dump -U $DB_USER $DB_NAME > backup_$(date 
 ### Restore Database
 
 Using the provided restore script (recommended):
+
 ```bash
 ./restore-database.sh ./backups/jupyterhub_metrics_20240101_120000.sql
 ```
 
 Manual restore:
+
 ```bash
 source ./config-loader.sh
 cat backup_20240101.sql | docker exec -i jupyterhub-timescaledb psql -U $DB_USER -d $DB_NAME
@@ -521,11 +539,12 @@ FROM show_chunks('container_observations', older_than => INTERVAL '7 days') i;
 
 **Error: "Configuration file not found"**
 
-```
+```text
 ERROR: Configuration file not found: /path/to/.env
 ```
 
 Solution: Create `.env` from the template:
+
 ```bash
 cp .env.example .env
 nano .env  # Edit with your values
@@ -533,7 +552,7 @@ nano .env  # Edit with your values
 
 **Error: "Required configuration variables not set"**
 
-```
+```text
 ERROR: The following required configuration variables are not set:
   - DB_PASSWORD
   - GRAFANA_ADMIN_PASSWORD
@@ -543,7 +562,7 @@ Solution: Check your `.env` file and ensure all required variables have values (
 
 **Error: "Port must be a number"**
 
-```
+```text
 ERROR: DB_PORT must be a number, got: invalid_value
 ```
 
@@ -552,6 +571,7 @@ Solution: Check `.env` and ensure port numbers are numeric (e.g., `5432` not `"5
 **Docker Compose not picking up `.env` values**
 
 Solution:
+
 1. Verify `.env` file exists in the same directory as `docker-compose.yml`
 2. Run `docker-compose config` to see substituted variables
 3. Ensure variable names match between `.env` and `docker-compose.yml`
@@ -562,17 +582,20 @@ For more configuration help, see [SECURITY.md](SECURITY.md).
 ### Collector not collecting data
 
 Check logs:
+
 ```bash
 docker-compose logs collector
 ```
 
 Common issues:
+
 - kubectl authentication problems
 - Wrong Kubernetes context
 - Network connectivity to cluster
 - Missing `.env` file (check: `docker-compose logs collector`)
 
 Test kubectl manually:
+
 ```bash
 docker-compose exec collector kubectl --context $(grep KUBECTL_CONTEXT .env | cut -d= -f2) get pods -n $(grep NAMESPACE .env | cut -d= -f2)
 ```
@@ -580,11 +603,13 @@ docker-compose exec collector kubectl --context $(grep KUBECTL_CONTEXT .env | cu
 ### Database connection errors
 
 Check if TimescaleDB is running:
+
 ```bash
 docker-compose ps timescaledb
 ```
 
 Test database connection using variables from `.env`:
+
 ```bash
 # Load configuration and test
 source ./config-loader.sh
@@ -592,6 +617,7 @@ docker exec jupyterhub-timescaledb psql -h localhost -U $DB_USER -d $DB_NAME -c 
 ```
 
 Verify `.env` values are correct:
+
 ```bash
 source ./config-loader.sh && echo "DB: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
 ```
@@ -605,6 +631,7 @@ source ./config-loader.sh && echo "DB: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
 ### High disk usage
 
 Check if compression is enabled:
+
 ```bash
 source ./config-loader.sh
 docker exec jupyterhub-timescaledb psql -U $DB_USER -d $DB_NAME -c "
@@ -613,6 +640,7 @@ SELECT * FROM timescaledb_information.compression_settings;
 ```
 
 Adjust retention policy if needed (example: keep only 180 days):
+
 ```sql
 SELECT remove_retention_policy('container_observations');
 SELECT add_retention_policy('container_observations', INTERVAL '180 days');
@@ -623,11 +651,13 @@ SELECT add_retention_policy('container_observations', INTERVAL '180 days');
 ### For Large Deployments (10k+ concurrent users)
 
 1. **Increase collection interval** to reduce data points:
+
    ```yaml
    COLLECTION_INTERVAL: 600  # 10 minutes
    ```
 
 2. **Adjust compression policy** to compress sooner:
+
    ```sql
    SELECT remove_compression_policy('container_observations');
    SELECT add_compression_policy('container_observations', INTERVAL '1 day');
@@ -636,6 +666,7 @@ SELECT add_retention_policy('container_observations', INTERVAL '180 days');
 3. **Add more indexes** for specific queries if needed
 
 4. **Increase PostgreSQL resources** in docker-compose.yml:
+
    ```yaml
    timescaledb:
      deploy:

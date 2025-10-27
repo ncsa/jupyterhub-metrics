@@ -330,6 +330,7 @@ helm install my-release ./chart \
 ```
 
 This will:
+
 - Enforce Pod Security Standards (restricted level)
 - Enable NetworkPolicies to restrict pod-to-pod traffic
 - Allow only necessary communication paths:
@@ -446,6 +447,7 @@ When you update the source files in the project root (init-db.sql, collector/, G
 ```
 
 This script will:
+
 - Build the collector Docker image with the current Chart version
 - Push the image to the registry
 - Sync source files into the Helm chart templates
@@ -461,26 +463,31 @@ helm upgrade my-release ./chart --namespace jupyterhub-metrics
 ## Chart Components
 
 ### TimescaleDB StatefulSet
+
 - Persistent time-series database
 - Automatic initialization on first deployment (post-install hook)
 - Configured with appropriate storage and resource limits
 
 ### Grafana Deployment
+
 - Dashboard visualization
 - Pre-configured TimescaleDB datasource
 - Optional persistent storage for Grafana data
 
 ### Metrics Collector Deployment
+
 - Collects container metrics from Kubernetes
 - Stores data in TimescaleDB
 - Configured with RBAC for pod access
 
 ### RBAC
+
 - Service account for collector
 - Cluster role with permissions to read pods
 - Cluster role binding
 
 ### Ingress (Optional)
+
 - External access to Grafana
 - TLS support with cert-manager integration
 - Configurable for different ingress controllers

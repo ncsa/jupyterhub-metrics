@@ -8,7 +8,7 @@ The Helm chart has been fully converted from the manual Kubernetes deployment sc
 
 ## Chart Location
 
-```
+```text
 /chart/
 ├── Chart.yaml                  # Chart metadata and version
 ├── values.yaml                 # Default configuration values
@@ -71,6 +71,7 @@ All variables from the original `.env` file are now available in `values.yaml`:
 ### 1. All-in-One Templating
 
 Every Kubernetes resource is now a template:
+
 - ✅ Namespace
 - ✅ Secrets (auto-generated from values)
 - ✅ ConfigMaps (5 different configurations)
@@ -90,6 +91,7 @@ The `update-templates.sh` script automatically syncs source files into the chart
 ```
 
 This keeps chart templates in sync with:
+
 - `init-db.sql` → `chart/files/init-db.sql`
 - `collector.sh` → `chart/files/collector.sh`
 - `grafana/provisioning/` → `chart/files/grafana/provisioning/`
@@ -98,6 +100,7 @@ This keeps chart templates in sync with:
 ### 3. Helper Functions
 
 The `_helpers.tpl` includes utility functions:
+
 - `jupyterhub-metrics.name` - Chart name
 - `jupyterhub-metrics.fullname` - Full release name
 - `jupyterhub-metrics.labels` - Standard labels
@@ -220,7 +223,7 @@ helm upgrade jupyterhub-metrics ./chart \
 
 ### Template File Organization
 
-```
+```text
 templates/
 ├── Namespace & RBAC
 │   ├── namespace.yaml
@@ -260,6 +263,7 @@ templates/
 3. **Override with** `--set key=value` flags
 
 Example:
+
 ```bash
 helm install jupyterhub-metrics ./chart \
   -f values-prod.yaml \  # First override
@@ -271,6 +275,7 @@ helm install jupyterhub-metrics ./chart \
 Using Helm provides significant advantages over manual Kubernetes deployments:
 
 **Benefits:**
+
 - ✅ Industry-standard templating with Go templates
 - ✅ Reusable across multiple environments
 - ✅ Easy to customize via values.yaml

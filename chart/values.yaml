@@ -56,7 +56,7 @@ timescaledb:
   # Storage configuration
   storage:
     size: 20Gi
-    storageClass: "" # Empty string = cluster default storage class
+    storageClass: ""  # Empty string = cluster default storage class
     accessMode: ReadWriteOnce
 
   # Resource requests and limits
@@ -148,7 +148,7 @@ grafana:
     # Use PVC (true) or emptyDir (false)
     enabled: true
     size: 5Gi
-    storageClass: "" # Empty string = cluster default
+    storageClass: ""  # Empty string = cluster default
     accessMode: ReadWriteOnce
 
   # Resource requests and limits
@@ -196,7 +196,7 @@ collector:
   enabled: true
 
   # Collection interval in seconds (how often to collect metrics)
-  interval: "300" # 5 minutes
+  interval: "300"  # 5 minutes
 
   # Collector image configuration
   # Built and pushed by update-chart.sh

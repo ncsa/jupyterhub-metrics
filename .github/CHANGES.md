@@ -3,6 +3,7 @@
 ## Files Created
 
 ### Workflows (8 files)
+
 - `.github/workflows/docker-collector.yml` - Docker image build & push
 - `.github/workflows/helm-chart.yml` - Helm chart linting & publishing
 - `.github/workflows/python-lint.yml` - Python code quality checks
@@ -13,11 +14,13 @@
 - `.github/workflows/release.yml` - Release management
 
 ### Configuration Files (3 files)
+
 - `.github/dependabot.yml` - Automated dependency updates
 - `.yamllint.yml` - YAML linting rules (Helm templates excluded)
 - `.markdownlint.json` - Markdown formatting rules (120 char line length)
 
 ### Documentation (3 files)
+
 - `.github/workflows/README.md` - Comprehensive workflow documentation
 - `.github/WORKFLOWS_SUMMARY.md` - Quick reference guide
 - `.github/TESTING_RESULTS.md` - Local testing validation results
@@ -25,6 +28,7 @@
 ## Key Decisions Made
 
 ### 1. Removed Unnecessary Checks
+
 - ❌ **Removed**: `check-secrets` job from `ci.yml`
   - **Reason**: `.gitignore` already handles this properly
   - **Impact**: Simpler workflow, fewer redundant checks
@@ -34,12 +38,15 @@
   - **Impact**: Consistent linting rules, no runtime config generation
 
 ### 2. Non-Blocking for Existing Code
+
 All linters are configured to:
+
 - Report issues as warnings
 - Not fail builds on pre-existing code style issues
 - Focus on syntax errors and critical security issues
 
 ### 3. Helm Template Handling
+
 - Helm chart templates (`.github/templates/`) use Go templating syntax
 - Excluded from yamllint to avoid false positives
 - Helm's own linter (`helm lint`) validates template syntax
@@ -47,6 +54,7 @@ All linters are configured to:
 ## Testing Validation
 
 All workflows tested locally:
+
 - ✅ YAML linting: All workflow files valid
 - ✅ Markdown linting: All docs properly formatted
 - ✅ JSON validation: All Grafana dashboards valid
