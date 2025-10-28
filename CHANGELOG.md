@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2025-10-27
+
+### Added
+
+- Added OAuth client credentials to Kubernetes secrets management
+- Added configurable secret key names for OAuth credentials
+- Added `ttlSecondsAfterFinished` to automatically clean up post-install Job after 5 minutes
+- Added Helm hook delete policy for post-install Job cleanup on upgrades
+
+### Changed
+
+- Moved OAuth credentials (clientId, clientSecret) to Kubernetes secrets (sensitive values only)
+- Removed non-sensitive values (database name, usernames) from secrets - now read from Helm values
+- Simplified OAuth configuration by removing redundant `login_attribute_path` (email is used for both)
+- Updated documentation to clarify which values are sensitive and should be in secrets
+
+### Security
+
+- OAuth client credentials are no longer exposed in values.yaml - only stored in secrets
+
 ## [1.2.2] - 2025-10-27
 
 ### Added

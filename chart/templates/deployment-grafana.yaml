@@ -52,10 +52,7 @@ spec:
               protocol: TCP
           env:
             - name: GF_SECURITY_ADMIN_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.grafana.passwordSecret" . }}
-                  key: GF_SECURITY_ADMIN_USER
+              value: {{ .Values.grafana.adminUser | quote }}
             - name: GF_SECURITY_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -94,9 +91,15 @@ spec:
             - name: GF_AUTH_GENERIC_OAUTH_NAME
               value: {{ .Values.grafana.oauth2.name | quote }}
             - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
-              value: {{ .Values.grafana.oauth2.clientId | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.grafana.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.oauth.clientIdKey" . }}
             - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
-              value: {{ .Values.grafana.oauth2.clientSecret | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyterhub-metrics.grafana.passwordSecret" . }}
+                  key: {{ include "jupyterhub-metrics.oauth.clientSecretKey" . }}
             - name: GF_AUTH_GENERIC_OAUTH_SCOPES
               value: {{ .Values.grafana.oauth2.scopes | quote }}
             - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
@@ -111,9 +114,8 @@ spec:
               value: {{ .Values.grafana.oauth2.autoLogin | quote }}
             - name: GF_AUTH_GENERIC_OAUTH_SKIP_ORG_ROLE_SYNC
               value: "false"
+            # Extract email from OAuth response for role mapping
             - name: GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH
-              value: "email"
-            - name: GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH
               value: "email"
 {{- if not .Values.grafana.oauth2.allowAllAuthenticatedViewers }}
             # Deny access to users who don't match any role in role_attribute_path

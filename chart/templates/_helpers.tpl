@@ -151,6 +151,28 @@ TimescaleDB port
 {{- end }}
 
 {{/*
+OAuth client ID key name
+*/}}
+{{- define "jupyterhub-metrics.oauth.clientIdKey" -}}
+{{- if .Values.secrets.externalSecretEnabled }}
+{{- .Values.secrets.externalSecretOAuthClientIdKey }}
+{{- else }}
+{{- print "OAUTH_CLIENT_ID" }}
+{{- end }}
+{{- end }}
+
+{{/*
+OAuth client secret key name
+*/}}
+{{- define "jupyterhub-metrics.oauth.clientSecretKey" -}}
+{{- if .Values.secrets.externalSecretEnabled }}
+{{- .Values.secrets.externalSecretOAuthClientSecretKey }}
+{{- else }}
+{{- print "OAUTH_CLIENT_SECRET" }}
+{{- end }}
+{{- end }}
+
+{{/*
 Grafana OAuth role attribute path (JMESPath expression for email-based role mapping)
 Priority: GrafanaAdmin > Admin > Editor > Viewer
 If viewerUsers is empty and allowAllAuthenticatedViewers is true, all authenticated users get Viewer role

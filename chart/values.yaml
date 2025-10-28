@@ -123,12 +123,21 @@ grafana:
   # Default configuration uses CILogon for federated authentication
   # To use CILogon, set enabled: true and configure clientId/clientSecret
   # Register your application at: https://cilogon.org/oauth2/register
+  #
+  # SECURITY NOTE: OAuth credentials are stored in Kubernetes secrets
+  # - When secrets.externalSecretEnabled=false: clientId/clientSecret are stored in the chart-managed secret
+  # - When secrets.externalSecretEnabled=true: credentials are read from your external secret
+  #   (keys: secrets.externalSecretOAuthClientIdKey and secrets.externalSecretOAuthClientSecretKey)
   oauth2:
     enabled: false
     name: "CILogon"
+    # OAuth client ID - stored in secret (OAUTH_CLIENT_ID key)
     # Set via: --set grafana.oauth2.clientId="cilogon:/client_id/YOUR_ID"
+    # Or use external secret when secrets.externalSecretEnabled=true
     clientId: ""
+    # OAuth client secret - stored in secret (OAUTH_CLIENT_SECRET key)
     # Set via: --set grafana.oauth2.clientSecret="YOUR_SECRET"
+    # Or use external secret when secrets.externalSecretEnabled=true
     clientSecret: ""
     scopes: "openid email profile"
     authUrl: "https://cilogon.org/authorize"
@@ -327,12 +336,14 @@ rbac:
 # SECURITY & SECRETS
 # ============================================================================
 secrets:
-  # Use external secret for database credentials
+  # Use external secret for sensitive credentials
   # If enabled, reference an existing secret instead of creating one
   externalSecretEnabled: false
   externalSecretName: ""
   externalSecretDbPasswordKey: "db-password"
   externalSecretGrafanaPasswordKey: "grafana-password"
+  externalSecretOAuthClientIdKey: "oauth-client-id"
+  externalSecretOAuthClientSecretKey: "oauth-client-secret"
 
 # ============================================================================
 # SECURITY CONTEXT & POLICIES

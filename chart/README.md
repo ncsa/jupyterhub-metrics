@@ -205,6 +205,8 @@ The following table lists the configurable parameters of the JupyterHub Metrics 
 | `secrets.externalSecretName` | External secret name | `""` |
 | `secrets.externalSecretDbPasswordKey` | External secret DB password key | `db-password` |
 | `secrets.externalSecretGrafanaPasswordKey` | External secret Grafana password key | `grafana-password` |
+| `secrets.externalSecretOAuthClientIdKey` | External secret OAuth client ID key | `oauth-client-id` |
+| `secrets.externalSecretOAuthClientSecretKey` | External secret OAuth client secret key | `oauth-client-secret` |
 
 ### Security Context & Policies
 
@@ -355,14 +357,13 @@ helm install my-release ./chart \
 If you have a Kubernetes Secret already created (not managed by External Secrets Operator):
 
 ```bash
-# Step 1: Create the secret manually
+# Step 1: Create the secret manually with default key names (only sensitive values)
 kubectl create secret generic my-jupyterhub-secrets \
   --namespace jupyterhub-metrics \
-  --from-literal=POSTGRES_DB=jupyterhub_metrics \
-  --from-literal=POSTGRES_USER=metrics_user \
-  --from-literal=POSTGRES_PASSWORD="$(openssl rand -base64 32)" \
-  --from-literal=GF_SECURITY_ADMIN_USER=admin \
-  --from-literal=GF_SECURITY_ADMIN_PASSWORD="$(openssl rand -base64 32)"
+  --from-literal=db-password="$(openssl rand -base64 32)" \
+  --from-literal=grafana-password="$(openssl rand -base64 32)" \
+  --from-literal=oauth-client-id="your-oauth-client-id" \
+  --from-literal=oauth-client-secret="your-oauth-client-secret"
 
 # Step 2: Install the chart referencing the external secret
 helm install my-release ./chart \
@@ -372,9 +373,19 @@ helm install my-release ./chart \
   --set secrets.externalSecretName="my-jupyterhub-secrets"
 ```
 
+**Required secret keys (default names):**
+- `db-password` - TimescaleDB password (configurable via `secrets.externalSecretDbPasswordKey`)
+- `grafana-password` - Grafana admin password (configurable via `secrets.externalSecretGrafanaPasswordKey`)
+- `oauth-client-id` - OAuth client ID (configurable via `secrets.externalSecretOAuthClientIdKey`, required if OAuth enabled)
+- `oauth-client-secret` - OAuth client secret (configurable via `secrets.externalSecretOAuthClientSecretKey`, required if OAuth enabled)
+
+**Note:** Non-sensitive values (database name, usernames) are configured via Helm values, not secrets.
+
+If your secret uses different key names, see "Using Custom Secret Key Names" below.
+
 #### Using Custom Secret Key Names
 
-If your external secret uses different key names for passwords:
+If your external secret uses different key names for passwords and OAuth credentials:
 
 ```bash
 helm install my-release ./chart \
@@ -382,11 +393,13 @@ helm install my-release ./chart \
   --create-namespace \
   --set secrets.externalSecretEnabled=true \
   --set secrets.externalSecretName="my-jupyterhub-secrets" \
-  --set secrets.externalSecretDbPasswordKey="db-password" \
-  --set secrets.externalSecretGrafanaPasswordKey="grafana-admin-password"
+  --set secrets.externalSecretDbPasswordKey="custom-db-password" \
+  --set secrets.externalSecretGrafanaPasswordKey="custom-grafana-password" \
+  --set secrets.externalSecretOAuthClientIdKey="custom-oauth-id" \
+  --set secrets.externalSecretOAuthClientSecretKey="custom-oauth-secret"
 ```
 
-**Note:** When using custom key names, your secret must still contain `POSTGRES_DB`, `POSTGRES_USER`, `GF_SECURITY_ADMIN_USER` with those exact names. Only the password keys can be customized.
+**Note:** Non-sensitive values (database name, usernames) are configured via Helm values (`timescaledb.database.name`, `timescaledb.database.user`, `grafana.adminUser`), not secrets. Only sensitive credentials need to be stored in the external secret.
 
 ### Installation Using Values File
 

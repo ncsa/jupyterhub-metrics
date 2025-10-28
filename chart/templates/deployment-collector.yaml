@@ -65,15 +65,9 @@ spec:
             - name: PGPORT
               value: {{ .Values.timescaledb.database.port | quote }}
             - name: PGDATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
-                  key: POSTGRES_DB
+              value: {{ .Values.timescaledb.database.name | quote }}
             - name: PGUSER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
-                  key: POSTGRES_USER
+              value: {{ .Values.timescaledb.database.user | quote }}
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
@@ -91,15 +85,9 @@ spec:
             - name: DB_PORT
               value: {{ .Values.timescaledb.database.port | quote }}
             - name: DB_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
-                  key: POSTGRES_DB
+              value: {{ .Values.timescaledb.database.name | quote }}
             - name: DB_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
-                  key: POSTGRES_USER
+              value: {{ .Values.timescaledb.database.user | quote }}
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:

@@ -56,15 +56,9 @@ spec:
             - -ctimescaledb.max_background_workers=16
           env:
             - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
-                  key: POSTGRES_DB
+              value: {{ .Values.timescaledb.database.name | quote }}
             - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
-                  key: POSTGRES_USER
+              value: {{ .Values.timescaledb.database.user | quote }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
