@@ -137,6 +137,8 @@ grafana:
 
     # Role-based access control
     # allowSignUp: Auto-create users on first OAuth login
+    # When false, only users explicitly added to Grafana (via role mapping) can log in
+    # When true with role_attribute_strict, unauthorized users see "IdP did not return a role attribute"
     allowSignUp: true
 
     # autoLogin: Skip Grafana login page and redirect to OAuth provider
