@@ -59,7 +59,7 @@ spec:
                 secretKeyRef:
                   name: {{ include "jupyterhub-metrics.grafana.passwordSecret" . }}
                   key: {{ include "jupyterhub-metrics.grafana.passwordKey" . }}
-            - name: GF_INSTALL_PLUGINS
+            - name: GF_PLUGINS_PREINSTALL_SYNC
               value: {{ .Values.grafana.plugins | join "," }}
             - name: DB_HOST
               value: {{ include "jupyterhub-metrics.timescaledb.host" . }}
