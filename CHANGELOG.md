@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed unused placeholder secret when external secrets are enabled
 - Corrected permissions for helm chart upload
 - Use sha- prefix for docker tags to avoid invalid tags in releases
+- Replaced deprecated GF_INSTALL_PLUGINS with GF_PLUGINS_PREINSTALL_SYNC in Grafana deployment
 
 ## [1.1.0] - 2025-10-26
 
