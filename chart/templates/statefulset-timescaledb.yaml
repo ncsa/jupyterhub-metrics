@@ -102,7 +102,7 @@ spec:
     - metadata:
         name: timescaledb-data
         labels:
-          {{- include "jupyterhub-metrics.labels" . | nindent 10 }}
+          {{- include "jupyterhub-metrics.staticLabels" . | nindent 10 }}
       spec:
         accessModes:
           - {{ .Values.timescaledb.storage.accessMode }}

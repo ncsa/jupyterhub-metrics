@@ -49,6 +49,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Static labels for StatefulSet volumeClaimTemplates
+These labels must never change to avoid immutable field errors during upgrades
+Only include stable, unchanging labels - no chart version or app version
+*/}}
+{{- define "jupyterhub-metrics.staticLabels" -}}
+app.kubernetes.io/name: {{ include "jupyterhub-metrics.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "jupyterhub-metrics.serviceAccountName" -}}
