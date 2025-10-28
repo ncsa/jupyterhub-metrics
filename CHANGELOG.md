@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-10-27
+
+### Added
+
+- Added `allowAllAuthenticatedViewers` flag for fine-grained Grafana access control
+- Set CILogon as default OAuth provider with pre-configured endpoints
+- Added GF_SERVER_ROOT_URL configuration when ingress is enabled
+
+### Changed
+
+- Improved OAuth2 configuration and role mapping for better readability
+
+### Removed
+
+- Removed unused `allowedOrganizations` configuration from OAuth settings
+
 ## [1.1.1] - 2025-10-27
 
 ### Added
