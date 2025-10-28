@@ -138,3 +138,40 @@ TimescaleDB port
 {{- define "jupyterhub-metrics.timescaledb.port" -}}
 {{- .Values.timescaledb.database.port }}
 {{- end }}
+
+{{/*
+Grafana OAuth role attribute path (JMESPath expression for email-based role mapping)
+Priority: GrafanaAdmin > Admin > Editor > Viewer
+If viewerUsers is empty and allowAllAuthenticatedViewers is true, all authenticated users get Viewer role
+If viewerUsers is empty and allowAllAuthenticatedViewers is false, only admins/editors can access
+*/}}
+{{- define "jupyterhub-metrics.grafana.roleAttributePath" -}}
+{{- $grafanaAdminCheck := "" -}}
+{{- $adminCheck := "" -}}
+{{- $editorCheck := "" -}}
+{{- $viewerCheck := "" -}}
+{{- if .Values.grafana.oauth2.grafanaAdminUsers -}}
+{{- $emails := .Values.grafana.oauth2.grafanaAdminUsers | join "', '" -}}
+{{- $grafanaAdminCheck = printf "(contains(['%s'], email) && 'GrafanaAdmin')" $emails -}}
+{{- end -}}
+{{- if .Values.grafana.oauth2.adminUsers -}}
+{{- $emails := .Values.grafana.oauth2.adminUsers | join "', '" -}}
+{{- $adminCheck = printf "(contains(['%s'], email) && 'Admin')" $emails -}}
+{{- end -}}
+{{- if .Values.grafana.oauth2.editorUsers -}}
+{{- $emails := .Values.grafana.oauth2.editorUsers | join "', '" -}}
+{{- $editorCheck = printf "(contains(['%s'], email) && 'Editor')" $emails -}}
+{{- end -}}
+{{- if .Values.grafana.oauth2.viewerUsers -}}
+{{- $emails := .Values.grafana.oauth2.viewerUsers | join "', '" -}}
+{{- $viewerCheck = printf "(contains(['%s'], email) && 'Viewer')" $emails -}}
+{{- else if .Values.grafana.oauth2.allowAllAuthenticatedViewers -}}
+{{- $viewerCheck = "'Viewer'" -}}
+{{- end -}}
+{{- $parts := list $grafanaAdminCheck $adminCheck $editorCheck $viewerCheck | compact -}}
+{{- if $parts -}}
+{{- $parts | join " || " -}}
+{{- else -}}
+{{- "''" -}}
+{{- end -}}
+{{- end }}

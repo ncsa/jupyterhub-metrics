@@ -56,7 +56,8 @@ timescaledb:
   # Storage configuration
   storage:
     size: 20Gi
-    storageClass: ""  # Empty string = cluster default storage class
+    # Empty string = cluster default storage class
+    storageClass: ""
     accessMode: ReadWriteOnce
 
   # Resource requests and limits
@@ -119,16 +120,52 @@ grafana:
     orgRole: Viewer
 
   # OAuth2 configuration
+  # Default configuration uses CILogon for federated authentication
+  # To use CILogon, set enabled: true and configure clientId/clientSecret
+  # Register your application at: https://cilogon.org/oauth2/register
   oauth2:
     enabled: false
-    name: ""
+    name: "CILogon"
+    # Set via: --set grafana.oauth2.clientId="cilogon:/client_id/YOUR_ID"
     clientId: ""
+    # Set via: --set grafana.oauth2.clientSecret="YOUR_SECRET"
     clientSecret: ""
-    scopes: ""
-    authUrl: ""
-    tokenUrl: ""
-    apiUrl: ""
-    allowedOrganizations: "Main Org."
+    scopes: "openid email profile"
+    authUrl: "https://cilogon.org/authorize"
+    tokenUrl: "https://cilogon.org/oauth2/token"
+    apiUrl: "https://cilogon.org/oauth2/userinfo"
+
+    # Role-based access control
+    # allowSignUp: Auto-create users on first OAuth login
+    allowSignUp: true
+
+    # autoLogin: Skip Grafana login page and redirect to OAuth provider
+    autoLogin: false
+
+    # Role mapping based on email addresses
+    # Users are assigned roles based on their email from OAuth provider
+    # Priority: GrafanaAdmin > Admin > Editor > Viewer
+    #
+    # allowAllAuthenticatedViewers: If true and viewerUsers is empty,
+    # all authenticated users get Viewer role. If false and viewerUsers is empty,
+    # only admins and editors can access (no viewers allowed).
+    allowAllAuthenticatedViewers: false
+    #
+    # Example:
+    #   grafanaAdminUsers:
+    #     - superadmin@example.com
+    #   adminUsers:
+    #     - admin@example.com
+    #   editorUsers:
+    #     - editor1@example.com
+    #     - editor2@example.com
+    #   viewerUsers:
+    #     - viewer1@example.com
+    #     - viewer2@example.com
+    grafanaAdminUsers: []
+    adminUsers: []
+    editorUsers: []
+    viewerUsers: []
 
   # Grafana image configuration
   image:
@@ -148,7 +185,8 @@ grafana:
     # Use PVC (true) or emptyDir (false)
     enabled: true
     size: 5Gi
-    storageClass: ""  # Empty string = cluster default
+    # Empty string = cluster default
+    storageClass: ""
     accessMode: ReadWriteOnce
 
   # Resource requests and limits
@@ -196,7 +234,8 @@ collector:
   enabled: true
 
   # Collection interval in seconds (how often to collect metrics)
-  interval: "300"  # 5 minutes
+  # 5 minutes
+  interval: "300"
 
   # Collector image configuration
   # Uses GitHub Container Registry image built by CI/CD
