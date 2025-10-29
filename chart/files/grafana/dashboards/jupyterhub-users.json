@@ -777,7 +777,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Total Runtime (Hours)"
+              "options": "Runtime"
             },
             "properties": [
               {
@@ -791,18 +791,26 @@
               {
                 "id": "custom.displayMode",
                 "value": "auto"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Application Sessions"
+              "options": "Apps"
             },
             "properties": [
               {
                 "id": "unit",
                 "value": "none"
+              },
+              {
+                "id": "custom.width",
+                "value": 60
               }
             ]
           },
@@ -820,6 +828,22 @@
                     "url": "/d/jupyterhub-user-detail?var-user=${__value.text}&${__url_time_range}"
                   }
                 ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last Seen"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "auto"
               }
             ]
           }
@@ -855,7 +879,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  us.user_email AS \"User Email\",\n  COALESCE(u.full_name, us.user_email) AS \"User Name\",\n  SUM(us.runtime_hours) AS \"Total Runtime (Hours)\",\n  COUNT(*) AS \"Application Sessions\",\n  MAX(us.session_end) AS \"Last Seen\"\nFROM user_sessions us\nLEFT JOIN users u ON us.user_email = u.email\nWHERE us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom()\nGROUP BY us.user_email, u.full_name\nORDER BY \"Total Runtime (Hours)\" DESC\nLIMIT 50;",
+          "rawSql": "SELECT\n  us.user_email AS \"User Email\",\n  COALESCE(u.full_name, us.user_email) AS \"User Name\",\n  SUM(us.runtime_hours) AS \"Runtime\",\n  COUNT(*) AS \"Apps\",\n  DATE_TRUNC('second', MAX(us.session_end)) AS \"Last Seen\"\nFROM user_sessions us\nLEFT JOIN users u ON us.user_email = u.email\nWHERE us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom()\nGROUP BY us.user_email, u.full_name\nORDER BY \"Runtime\" DESC\nLIMIT 50;",
           "refId": "A",
           "select": [
             [
