@@ -522,7 +522,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  time_bucket_gapfill('$__interval', timestamp, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz + '$__interval'::interval) AS time,\n  COALESCE(COUNT(DISTINCT user_email), 0) AS \"Active Users\"\nFROM container_observations\nWHERE timestamp >= $__timeFrom()::timestamptz - '$__interval'::interval\n  AND timestamp < $__timeTo()::timestamptz + '$__interval'::interval\nGROUP BY time\nORDER BY time;",
+          "rawSql": "SELECT\n  time_bucket_gapfill('$__interval', session_start, start => $__timeFrom()::timestamptz, finish => $__timeTo()::timestamptz + '$__interval'::interval) AS time,\n  COALESCE(COUNT(DISTINCT user_email), 0) AS \"Active Users\"\nFROM user_sessions\nWHERE session_start >= $__timeFrom()::timestamptz - '$__interval'::interval\n  AND session_start < $__timeTo()::timestamptz + '$__interval'::interval\nGROUP BY time\nORDER BY time;",
           "refId": "A",
           "select": [
             [
