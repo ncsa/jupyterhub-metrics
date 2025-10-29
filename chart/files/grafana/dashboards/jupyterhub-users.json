@@ -782,11 +782,15 @@
             "properties": [
               {
                 "id": "unit",
-                "value": "h"
+                "value": "none"
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 1
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "auto"
               }
             ]
           },
