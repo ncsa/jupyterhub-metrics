@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.5] - 2025-11-03
 
+### Added
+
+- Added Application Details dashboard with comprehensive application analytics
+- Application selector dropdown variable to filter all dashboard panels by specific container application
+- Active sessions over time chart showing session counts per hour for selected application
+- CPU vs GPU usage pie chart displaying resource type distribution
+- Summary statistics panels showing Total Hours, Total Users, Total Sessions, and Average Session Duration
+- Users table showing all users of the application with GPU Hours, CPU Hours, Total Hours, and Session counts
+- Colleges table showing usage by college/school with user counts and total hours
+- Departments table showing usage by department with user counts and total hours
+- Time range filter support for all panels to analyze specific time periods
+
 ### Fixed
 
 - Made `ingress.annotations`, `ingress.className`, `ingress.host`, and `ingress.tls` optional in `values.schema.json`

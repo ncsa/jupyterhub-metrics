@@ -8,6 +8,18 @@ appVersion: "1.2.5"
 
 annotations:
   artifacthub.io/changes: |
+    - kind: added
+      description: Added Application Details dashboard with application selector dropdown
+    - kind: added
+      description: Added active sessions time series chart to Application Details dashboard
+    - kind: added
+      description: Added CPU vs GPU usage pie chart to Application Details dashboard
+    - kind: added
+      description: Added users table with GPU/CPU/Total hours breakdown to Application Details dashboard
+    - kind: added
+      description: Added colleges and departments usage tables to Application Details dashboard
+    - kind: added
+      description: Added summary statistics (Total Hours, Total Users, Total Sessions, Avg Session Duration) to Application Details dashboard
     - kind: fixed
       description: Made ingress.annotations, ingress.className, ingress.host, and ingress.tls optional in values.schema.json
     - kind: fixed
