@@ -94,6 +94,8 @@ This document contains important rules, conventions, and structural information 
    - Add JSON schema definitions for any new values added to `values.yaml`
    - Include descriptions, types, and constraints for all configuration options
    - This enables validation and provides documentation for chart users
+   - When making fields optional or allowing null, update the type to: `"type": ["string", "null"]` or `"type": ["object", "null"]`
+   - Always update `Chart.yaml` with schema changes in the `artifacthub.io/changes` annotation
    - Location: `chart/values.schema.json`
 
 4. **UPDATE ARTIFACTHUB.IO CHANGES** - Document changes in Chart.yaml

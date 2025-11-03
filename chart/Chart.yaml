@@ -3,21 +3,19 @@ name: jupyterhub-metrics
 description: A Helm chart for JupyterHub container metrics monitoring with TimescaleDB and Grafana
 type: application
 
-version: 1.2.4
-appVersion: "1.2.4"
+version: 1.2.5
+appVersion: "1.2.5"
 
 annotations:
   artifacthub.io/changes: |
-    - kind: added
-      description: Added Users by College table to demographics dashboard
-    - kind: added
-      description: Added Users by Application table to demographics dashboard
-    - kind: added
-      description: Added values.schema.json for Helm chart validation
-    - kind: changed
-      description: Updated Users by Job Title table to include GPU Hours, CPU Hours, and Total Hours columns
-    - kind: changed
-      description: Reorganized demographics dashboard into 2x2 grid layout (College, Department, Job Title, Application)
+    - kind: fixed
+      description: Made ingress.annotations, ingress.className, ingress.host, and ingress.tls optional in values.schema.json
+    - kind: fixed
+      description: Made grafana.port optional with default value of 3000
+    - kind: fixed
+      description: Made grafana.anonymous.orgName and orgRole optional when anonymous access is disabled
+    - kind: fixed
+      description: Made collector.interval optional with default value of 300 seconds
 
 keywords:
   - jupyterhub

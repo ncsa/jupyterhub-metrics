@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2025-11-03
+
+### Fixed
+
+- Made `ingress.annotations`, `ingress.className`, `ingress.host`, and `ingress.tls` optional in `values.schema.json`
+- Made `grafana.port` optional with default value of 3000
+- Made `grafana.anonymous.orgName` and `orgRole` optional when anonymous access is disabled
+- Made `collector.interval` optional with default value of 300 seconds
+- Updated AGENTS.md with schema management best practices
+
 ## [1.2.4] - 2025-11-03
 
 ### Added

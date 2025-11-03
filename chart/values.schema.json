@@ -29,7 +29,13 @@
           "description": "Enable debug mode for troubleshooting"
         }
       },
-      "required": ["timescaledbEnabled", "grafanaEnabled", "collectorEnabled", "ingressEnabled", "debug"]
+      "required": [
+        "timescaledbEnabled",
+        "grafanaEnabled",
+        "collectorEnabled",
+        "ingressEnabled",
+        "debug"
+      ]
     },
     "timescaledb": {
       "type": "object",
@@ -177,13 +183,13 @@
               "description": "Enable anonymous access"
             },
             "orgName": {
-              "type": "string",
-              "description": "Organization name for anonymous users"
+              "type": ["string", "null"],
+              "description": "Organization name for anonymous users. Only used if enabled=true."
             },
             "orgRole": {
-              "type": "string",
-              "description": "Role for anonymous users",
-              "enum": ["Viewer", "Editor", "Admin"]
+              "type": ["string", "null"],
+              "description": "Role for anonymous users. Only used if enabled=true.",
+              "enum": ["Viewer", "Editor", "Admin", null]
             }
           },
           "required": ["enabled"]
@@ -294,8 +300,8 @@
           "required": ["repository", "tag", "pullPolicy"]
         },
         "port": {
-          "type": "integer",
-          "description": "Grafana port",
+          "type": ["integer", "null"],
+          "description": "Grafana port (default: 3000 if not specified)",
           "minimum": 1,
           "maximum": 65535
         },
@@ -346,7 +352,7 @@
           "$ref": "#/definitions/containerSecurityContext"
         }
       },
-      "required": ["enabled", "replicas", "adminUser", "adminPassword", "image", "port"]
+      "required": ["enabled", "replicas", "adminUser", "adminPassword", "image"]
     },
     "collector": {
       "type": "object",
@@ -357,8 +363,8 @@
           "description": "Enable collector deployment"
         },
         "interval": {
-          "type": "string",
-          "description": "Collection interval in seconds",
+          "type": ["string", "null"],
+          "description": "Collection interval in seconds (default: 300 if not specified)",
           "pattern": "^[0-9]+$"
         },
         "image": {
@@ -386,7 +392,7 @@
           "$ref": "#/definitions/containerSecurityContext"
         }
       },
-      "required": ["enabled", "interval", "image"]
+      "required": ["enabled", "image"]
     },
     "jupyterhub": {
       "type": "object",
@@ -414,33 +420,34 @@
           "description": "Enable ingress for Grafana"
         },
         "className": {
-          "type": "string",
-          "description": "Ingress class name (nginx, traefik, etc.)"
+          "type": ["string", "null"],
+          "description": "Ingress class name (nginx, traefik, etc.). Null uses cluster default."
         },
         "host": {
-          "type": "string",
-          "description": "Hostname for Grafana access"
+          "type": ["string", "null"],
+          "description": "Hostname for Grafana access. Optional if using path-based routing."
         },
         "annotations": {
-          "type": "object",
+          "type": ["object", "null"],
           "description": "Ingress annotations",
           "additionalProperties": {
             "type": "string"
           }
         },
         "tls": {
-          "type": "object",
+          "type": ["object", "null"],
+          "description": "TLS configuration (optional if not using HTTPS)",
           "properties": {
             "enabled": {
               "type": "boolean",
               "description": "Enable TLS"
             },
             "secretName": {
-              "type": "string",
+              "type": ["string", "null"],
               "description": "Secret name containing TLS certificate"
             },
             "certManagerIssuer": {
-              "type": "string",
+              "type": ["string", "null"],
               "description": "cert-manager issuer name"
             }
           },
@@ -586,7 +593,17 @@
       }
     }
   },
-  "required": ["global", "timescaledb", "grafana", "collector", "jupyterhub", "ingress", "rbac", "secrets", "security"],
+  "required": [
+    "global",
+    "timescaledb",
+    "grafana",
+    "collector",
+    "jupyterhub",
+    "ingress",
+    "rbac",
+    "secrets",
+    "security"
+  ],
   "definitions": {
     "resources": {
       "type": "object",
