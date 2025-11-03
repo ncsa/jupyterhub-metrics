@@ -1,0 +1,706 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JupyterHub Metrics Helm Chart Configuration",
+  "description": "Configuration schema for JupyterHub metrics collection system with TimescaleDB and Grafana",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global settings for enabling/disabling components",
+      "properties": {
+        "timescaledbEnabled": {
+          "type": "boolean",
+          "description": "Enable/disable TimescaleDB component"
+        },
+        "grafanaEnabled": {
+          "type": "boolean",
+          "description": "Enable/disable Grafana component"
+        },
+        "collectorEnabled": {
+          "type": "boolean",
+          "description": "Enable/disable metrics collector component"
+        },
+        "ingressEnabled": {
+          "type": "boolean",
+          "description": "Enable/disable ingress for Grafana"
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "Enable debug mode for troubleshooting"
+        }
+      },
+      "required": ["timescaledbEnabled", "grafanaEnabled", "collectorEnabled", "ingressEnabled", "debug"]
+    },
+    "timescaledb": {
+      "type": "object",
+      "description": "TimescaleDB configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable TimescaleDB deployment"
+        },
+        "database": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Database name",
+              "minLength": 1
+            },
+            "user": {
+              "type": "string",
+              "description": "Database user",
+              "minLength": 1
+            },
+            "password": {
+              "type": "string",
+              "description": "Database password (required, should be set via --set or external secret)"
+            },
+            "port": {
+              "type": "integer",
+              "description": "Database port",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": ["name", "user", "password", "port"]
+        },
+        "external": {
+          "type": "object",
+          "description": "External database configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Use external database instead of deploying TimescaleDB"
+            },
+            "host": {
+              "type": "string",
+              "description": "External database host"
+            },
+            "port": {
+              "type": "integer",
+              "description": "External database port",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": ["enabled"]
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "description": "TimescaleDB image repository"
+            },
+            "tag": {
+              "type": "string",
+              "description": "TimescaleDB image tag"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Image pull policy",
+              "enum": ["Always", "IfNotPresent", "Never"]
+            }
+          },
+          "required": ["repository", "tag", "pullPolicy"]
+        },
+        "serviceName": {
+          "type": "string",
+          "description": "Service name for internal DNS"
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "size": {
+              "type": "string",
+              "description": "Storage size (e.g., 20Gi)",
+              "pattern": "^[0-9]+([EPTGMK]i?)?$"
+            },
+            "storageClass": {
+              "type": "string",
+              "description": "Storage class name (empty string uses cluster default)"
+            },
+            "accessMode": {
+              "type": "string",
+              "description": "Access mode for the volume",
+              "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"]
+            }
+          },
+          "required": ["size", "accessMode"]
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/probe"
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/probe"
+        },
+        "podSecurityContext": {
+          "$ref": "#/definitions/podSecurityContext"
+        },
+        "containerSecurityContext": {
+          "$ref": "#/definitions/containerSecurityContext"
+        }
+      },
+      "required": ["enabled", "database", "image", "serviceName", "storage"]
+    },
+    "grafana": {
+      "type": "object",
+      "description": "Grafana configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable Grafana deployment"
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Number of Grafana replicas",
+          "minimum": 1
+        },
+        "adminUser": {
+          "type": "string",
+          "description": "Grafana admin username",
+          "minLength": 1
+        },
+        "adminPassword": {
+          "type": "string",
+          "description": "Grafana admin password (required, should be set via --set or external secret)"
+        },
+        "anonymous": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable anonymous access"
+            },
+            "orgName": {
+              "type": "string",
+              "description": "Organization name for anonymous users"
+            },
+            "orgRole": {
+              "type": "string",
+              "description": "Role for anonymous users",
+              "enum": ["Viewer", "Editor", "Admin"]
+            }
+          },
+          "required": ["enabled"]
+        },
+        "oauth2": {
+          "type": "object",
+          "description": "OAuth2 configuration (CILogon)",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable OAuth2 authentication"
+            },
+            "name": {
+              "type": "string",
+              "description": "OAuth provider name"
+            },
+            "clientId": {
+              "type": "string",
+              "description": "OAuth client ID"
+            },
+            "clientSecret": {
+              "type": "string",
+              "description": "OAuth client secret"
+            },
+            "scopes": {
+              "type": "string",
+              "description": "OAuth scopes"
+            },
+            "authUrl": {
+              "type": "string",
+              "description": "OAuth authorization URL",
+              "format": "uri"
+            },
+            "tokenUrl": {
+              "type": "string",
+              "description": "OAuth token URL",
+              "format": "uri"
+            },
+            "apiUrl": {
+              "type": "string",
+              "description": "OAuth API URL",
+              "format": "uri"
+            },
+            "allowSignUp": {
+              "type": "boolean",
+              "description": "Auto-create users on first OAuth login"
+            },
+            "autoLogin": {
+              "type": "boolean",
+              "description": "Skip Grafana login page and redirect to OAuth"
+            },
+            "allowAllAuthenticatedViewers": {
+              "type": "boolean",
+              "description": "Allow all authenticated users viewer access"
+            },
+            "grafanaAdminUsers": {
+              "type": "array",
+              "description": "Email addresses of Grafana Admin users",
+              "items": {
+                "type": "string",
+                "format": "email"
+              }
+            },
+            "adminUsers": {
+              "type": "array",
+              "description": "Email addresses of Admin users",
+              "items": {
+                "type": "string",
+                "format": "email"
+              }
+            },
+            "editorUsers": {
+              "type": "array",
+              "description": "Email addresses of Editor users",
+              "items": {
+                "type": "string",
+                "format": "email"
+              }
+            },
+            "viewerUsers": {
+              "type": "array",
+              "description": "Email addresses of Viewer users",
+              "items": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          },
+          "required": ["enabled"]
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "description": "Grafana image repository"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Grafana image tag"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Image pull policy",
+              "enum": ["Always", "IfNotPresent", "Never"]
+            }
+          },
+          "required": ["repository", "tag", "pullPolicy"]
+        },
+        "port": {
+          "type": "integer",
+          "description": "Grafana port",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "plugins": {
+          "type": "array",
+          "description": "List of Grafana plugins to install",
+          "items": {
+            "type": "string"
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Use PVC (true) or emptyDir (false)"
+            },
+            "size": {
+              "type": "string",
+              "description": "Storage size (e.g., 5Gi)",
+              "pattern": "^[0-9]+([EPTGMK]i?)?$"
+            },
+            "storageClass": {
+              "type": "string",
+              "description": "Storage class name (empty string uses cluster default)"
+            },
+            "accessMode": {
+              "type": "string",
+              "description": "Access mode for the volume",
+              "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"]
+            }
+          },
+          "required": ["enabled"]
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/probe"
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/probe"
+        },
+        "podSecurityContext": {
+          "$ref": "#/definitions/podSecurityContext"
+        },
+        "containerSecurityContext": {
+          "$ref": "#/definitions/containerSecurityContext"
+        }
+      },
+      "required": ["enabled", "replicas", "adminUser", "adminPassword", "image", "port"]
+    },
+    "collector": {
+      "type": "object",
+      "description": "Metrics collector configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable collector deployment"
+        },
+        "interval": {
+          "type": "string",
+          "description": "Collection interval in seconds",
+          "pattern": "^[0-9]+$"
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "description": "Collector image repository"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Image pull policy",
+              "enum": ["Always", "IfNotPresent", "Never"]
+            }
+          },
+          "required": ["repository", "pullPolicy"]
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        },
+        "podSecurityContext": {
+          "$ref": "#/definitions/podSecurityContext"
+        },
+        "containerSecurityContext": {
+          "$ref": "#/definitions/containerSecurityContext"
+        }
+      },
+      "required": ["enabled", "interval", "image"]
+    },
+    "jupyterhub": {
+      "type": "object",
+      "description": "JupyterHub target configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "Kubernetes namespace where JupyterHub is deployed",
+          "minLength": 1
+        },
+        "podLabelSelector": {
+          "type": "string",
+          "description": "Label selector to find JupyterHub singleuser pods",
+          "minLength": 1
+        }
+      },
+      "required": ["namespace", "podLabelSelector"]
+    },
+    "ingress": {
+      "type": "object",
+      "description": "Ingress configuration for Grafana",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable ingress for Grafana"
+        },
+        "className": {
+          "type": "string",
+          "description": "Ingress class name (nginx, traefik, etc.)"
+        },
+        "host": {
+          "type": "string",
+          "description": "Hostname for Grafana access"
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Ingress annotations",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tls": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable TLS"
+            },
+            "secretName": {
+              "type": "string",
+              "description": "Secret name containing TLS certificate"
+            },
+            "certManagerIssuer": {
+              "type": "string",
+              "description": "cert-manager issuer name"
+            }
+          },
+          "required": ["enabled"]
+        }
+      },
+      "required": ["enabled"]
+    },
+    "rbac": {
+      "type": "object",
+      "description": "RBAC configuration",
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "description": "Create RBAC resources"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "description": "Service account name"
+        },
+        "clusterRoleName": {
+          "type": "string",
+          "description": "Cluster role name"
+        }
+      },
+      "required": ["create", "serviceAccountName", "clusterRoleName"]
+    },
+    "secrets": {
+      "type": "object",
+      "description": "Security and secrets configuration",
+      "properties": {
+        "externalSecretEnabled": {
+          "type": "boolean",
+          "description": "Use external secret for sensitive credentials"
+        },
+        "externalSecretName": {
+          "type": "string",
+          "description": "Name of external secret"
+        },
+        "externalSecretDbPasswordKey": {
+          "type": "string",
+          "description": "Key for database password in external secret"
+        },
+        "externalSecretGrafanaPasswordKey": {
+          "type": "string",
+          "description": "Key for Grafana password in external secret"
+        },
+        "externalSecretOAuthClientIdKey": {
+          "type": "string",
+          "description": "Key for OAuth client ID in external secret"
+        },
+        "externalSecretOAuthClientSecretKey": {
+          "type": "string",
+          "description": "Key for OAuth client secret in external secret"
+        }
+      },
+      "required": ["externalSecretEnabled"]
+    },
+    "security": {
+      "type": "object",
+      "description": "Security context and policies",
+      "properties": {
+        "networkPolicyEnabled": {
+          "type": "boolean",
+          "description": "Enable network policy to restrict traffic"
+        },
+        "podSecurityPolicyEnabled": {
+          "type": "boolean",
+          "description": "Enable pod security policy (legacy, for Kubernetes < 1.25)"
+        }
+      },
+      "required": ["networkPolicyEnabled", "podSecurityPolicyEnabled"]
+    },
+    "advanced": {
+      "type": "object",
+      "description": "Advanced options",
+      "properties": {
+        "nodeSelector": {
+          "type": "object",
+          "description": "Node selector for pod placement",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "description": "Tolerations for node taints",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "operator": {
+                "type": "string",
+                "enum": ["Exists", "Equal"]
+              },
+              "value": {
+                "type": "string"
+              },
+              "effect": {
+                "type": "string",
+                "enum": ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+              }
+            }
+          }
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Pod affinity rules"
+        },
+        "priorityClassName": {
+          "type": "string",
+          "description": "Priority class for pods"
+        },
+        "kubeWaitTimeout": {
+          "type": "integer",
+          "description": "Timeout for resource creation (seconds)",
+          "minimum": 1
+        }
+      }
+    },
+    "sourceFiles": {
+      "type": "object",
+      "description": "Source files configuration for update-templates.sh script",
+      "properties": {
+        "initDbSql": {
+          "type": "string",
+          "description": "Path to init-db.sql (relative to project root)"
+        },
+        "collectorScript": {
+          "type": "string",
+          "description": "Path to collector.sh (relative to project root)"
+        },
+        "grafanaProvisioning": {
+          "type": "string",
+          "description": "Path to Grafana provisioning directory (relative to project root)"
+        },
+        "grafanaDashboards": {
+          "type": "string",
+          "description": "Path to Grafana dashboards directory (relative to project root)"
+        }
+      }
+    }
+  },
+  "required": ["global", "timescaledb", "grafana", "collector", "jupyterhub", "ingress", "rbac", "secrets", "security"],
+  "definitions": {
+    "resources": {
+      "type": "object",
+      "description": "Resource requests and limits",
+      "properties": {
+        "requests": {
+          "type": "object",
+          "properties": {
+            "memory": {
+              "type": "string",
+              "description": "Memory request",
+              "pattern": "^[0-9]+([EPTGMK]i?)?$"
+            },
+            "cpu": {
+              "type": "string",
+              "description": "CPU request",
+              "pattern": "^[0-9]+(m|\\.[0-9]+)?$"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "memory": {
+              "type": "string",
+              "description": "Memory limit",
+              "pattern": "^[0-9]+([EPTGMK]i?)?$"
+            },
+            "cpu": {
+              "type": "string",
+              "description": "CPU limit",
+              "pattern": "^[0-9]+(m|\\.[0-9]+)?$"
+            }
+          }
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "description": "Pod probe configuration",
+      "properties": {
+        "initialDelaySeconds": {
+          "type": "integer",
+          "description": "Initial delay before probe starts",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "description": "How often to perform the probe",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "description": "Probe timeout",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "description": "Number of failures before marking as failed",
+          "minimum": 1
+        }
+      }
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "description": "Pod security context",
+      "properties": {
+        "fsGroup": {
+          "type": "integer",
+          "description": "Filesystem group ID",
+          "minimum": 0
+        },
+        "runAsNonRoot": {
+          "type": "boolean",
+          "description": "Run as non-root user"
+        },
+        "runAsUser": {
+          "type": "integer",
+          "description": "User ID to run as",
+          "minimum": 0
+        }
+      }
+    },
+    "containerSecurityContext": {
+      "type": "object",
+      "description": "Container security context",
+      "properties": {
+        "allowPrivilegeEscalation": {
+          "type": "boolean",
+          "description": "Allow privilege escalation"
+        },
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "drop": {
+              "type": "array",
+              "description": "Capabilities to drop",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "seccompProfile": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Seccomp profile type",
+              "enum": ["RuntimeDefault", "Unconfined", "Localhost"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -118,9 +118,9 @@
         ]
       },
       "gridPos": {
-        "h": 10,
+        "h": 12,
         "w": 12,
-        "x": 0,
+        "x": 12,
         "y": 0
       },
       "id": 1,
@@ -199,14 +199,74 @@
                 "value": 120
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
           }
         ]
       },
       "gridPos": {
-        "h": 10,
+        "h": 12,
         "w": 12,
-        "x": 12,
-        "y": 0
+        "x": 0,
+        "y": 12
       },
       "id": 2,
       "options": {
@@ -214,7 +274,7 @@
         "sortBy": [
           {
             "desc": true,
-            "displayName": "User Count"
+            "displayName": "Total Hours"
           }
         ]
       },
@@ -225,7 +285,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  COALESCE(u.job_title, 'Unknown') AS \"Job Title\",\n  COUNT(DISTINCT co.user_email) AS \"User Count\"\nFROM container_observations co\nLEFT JOIN users u ON co.user_email = u.email\nWHERE co.timestamp >= $__timeFrom()\n  AND co.timestamp <= $__timeTo()\nGROUP BY u.job_title\nORDER BY \"User Count\" DESC;",
+          "rawSql": "SELECT\n  COALESCE(u.job_title, 'Unknown') AS \"Job Title\",\n  COUNT(DISTINCT co.user_email) AS \"User Count\",\n  ROUND(SUM(CASE WHEN co.node_name NOT ILIKE '%cpu%' THEN runtime_hours ELSE 0 END)::numeric, 2) AS \"GPU Hours\",\n  ROUND(SUM(CASE WHEN co.node_name ILIKE '%cpu%' THEN runtime_hours ELSE 0 END)::numeric, 2) AS \"CPU Hours\",\n  ROUND(SUM(runtime_hours)::numeric, 2) AS \"Total Hours\"\nFROM (\n  SELECT \n    us.user_email,\n    us.node_name,\n    us.runtime_hours\n  FROM user_sessions us\n  WHERE us.session_start <= $__timeTo()\n    AND us.session_end >= $__timeFrom()\n) co\nLEFT JOIN users u ON co.user_email = u.email\nGROUP BY u.job_title\nORDER BY \"Total Hours\" DESC;",
           "refId": "A",
           "select": [
             [
@@ -284,14 +344,74 @@
                 "value": 120
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
           }
         ]
       },
       "gridPos": {
         "h": 12,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 10
+        "y": 0
       },
       "id": 3,
       "options": {
@@ -299,7 +419,7 @@
         "sortBy": [
           {
             "desc": true,
-            "displayName": "User Count"
+            "displayName": "Total Hours"
           }
         ]
       },
@@ -310,7 +430,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  COALESCE(u.department, 'Unknown') AS \"Department\",\n  co.container_base AS \"Application\",\n  COUNT(DISTINCT co.user_email) AS \"User Count\"\nFROM container_observations co\nLEFT JOIN users u ON co.user_email = u.email\nWHERE co.timestamp >= $__timeFrom()\n  AND co.timestamp <= $__timeTo()\nGROUP BY u.department, co.container_base\nORDER BY \"User Count\" DESC;",
+          "rawSql": "SELECT\n  COALESCE(u.college, 'Unknown') AS \"College\",\n  COUNT(DISTINCT co.user_email) AS \"User Count\",\n  ROUND(SUM(CASE WHEN co.node_name NOT ILIKE '%cpu%' THEN runtime_hours ELSE 0 END)::numeric, 2) AS \"GPU Hours\",\n  ROUND(SUM(CASE WHEN co.node_name ILIKE '%cpu%' THEN runtime_hours ELSE 0 END)::numeric, 2) AS \"CPU Hours\",\n  ROUND(SUM(runtime_hours)::numeric, 2) AS \"Total Hours\"\nFROM (\n  SELECT \n    us.user_email,\n    us.node_name,\n    us.runtime_hours\n  FROM user_sessions us\n  WHERE us.session_start <= $__timeTo()\n    AND us.session_end >= $__timeFrom()\n) co\nLEFT JOIN users u ON co.user_email = u.email\nGROUP BY u.college\nORDER BY \"Total Hours\" DESC;",
           "refId": "A",
           "select": [
             [
@@ -330,7 +450,152 @@
           ]
         }
       ],
-      "title": "Department and Application Usage",
+      "title": "Users by College",
+      "type": "table"
+    },
+    {
+      "datasource": "TimescaleDB",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "User Count"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total Hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "id": 4,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Total Hours"
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  COALESCE(co.container_base, 'Unknown') AS \"Application\",\n  COUNT(DISTINCT co.user_email) AS \"User Count\",\n  ROUND(SUM(CASE WHEN co.node_name NOT ILIKE '%cpu%' THEN runtime_hours ELSE 0 END)::numeric, 2) AS \"GPU Hours\",\n  ROUND(SUM(CASE WHEN co.node_name ILIKE '%cpu%' THEN runtime_hours ELSE 0 END)::numeric, 2) AS \"CPU Hours\",\n  ROUND(SUM(runtime_hours)::numeric, 2) AS \"Total Hours\"\nFROM (\n  SELECT \n    us.user_email,\n    us.node_name,\n    us.container_base,\n    us.runtime_hours\n  FROM user_sessions us\n  WHERE us.session_start <= $__timeTo()\n    AND us.session_end >= $__timeFrom()\n) co\nGROUP BY co.container_base\nORDER BY \"Total Hours\" DESC;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": ["value"],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Users by Application",
       "type": "table"
     }
   ],

@@ -51,6 +51,90 @@ This document contains important rules, conventions, and structural information 
 
    - Exception: Simple commands like `git add`, `git commit` don't need `--no-pager`
 
+4. **AMEND COMMITS WHEN FIXING ERRORS IN THE SAME CHAT** - Keep history clean
+   - If you're fixing an error or making adjustments to work done in the same conversation, use `git commit --amend`
+   - Only create new commits if the previous work has been pushed to remote
+   - Check if commits have been pushed: `git --no-pager log origin/main..HEAD`
+   - Example:
+
+     ```bash
+     # Make fix to previous work
+     git add chart/files/grafana/dashboards/jupyterhub-demographics.json
+     
+     # Amend the previous commit instead of creating a new one
+     git commit --amend --no-edit
+     ```
+
+   - Use `--amend -m "new message"` if you need to update the commit message
+
+### Helm Chart Management
+
+1. **UPDATE Chart.yaml VERSION AFTER CHANGES** - Keep versions in sync
+   - Any changes to files in the `chart/` directory require a version bump in `chart/Chart.yaml`
+   - Version bump guidelines (follow Semantic Versioning):
+     - **PATCH** (e.g., 1.2.3 → 1.2.4): Bug fixes, dashboard tweaks, small corrections
+     - **MINOR** (e.g., 1.2.4 → 1.3.0): New features, new dashboards, new configuration options
+     - **MAJOR** (e.g., 1.3.0 → 2.0.0): Breaking changes, schema changes, incompatible updates
+   - Example changes:
+
+     ```yaml
+     # chart/Chart.yaml
+     version: 1.3.0  # Bump this after changes
+     ```
+
+2. **ONLY BUMP VERSION IF NOT PUSHED** - Check before versioning
+   - Before bumping the chart version, verify the current version hasn't been pushed
+   - Check for unpushed commits: `git --no-pager log origin/main..HEAD`
+   - Check if the version tag exists: `git --no-pager tag -l "v1.3.0"`
+   - If the version is already pushed/tagged, you MUST bump to the next version
+   - If not pushed yet, you can amend the existing commit with new changes
+
+3. **MAINTAIN values.schema.json** - Keep schema up to date
+   - The `chart/values.schema.json` file must be kept in sync with `chart/values.yaml`
+   - Add JSON schema definitions for any new values added to `values.yaml`
+   - Include descriptions, types, and constraints for all configuration options
+   - This enables validation and provides documentation for chart users
+   - Location: `chart/values.schema.json`
+
+4. **UPDATE ARTIFACTHUB.IO CHANGES** - Document changes in Chart.yaml
+   - Helm charts can include an `artifacthub.io/changes` annotation in `Chart.yaml`
+   - Document ALL changes made in the version, even small ones
+   - Format:
+
+     ```yaml
+     annotations:
+       artifacthub.io/changes: |
+         - kind: added
+           description: Added Users by College and Users by Application tables to demographics dashboard
+         - kind: changed
+           description: Updated all demographics tables to show GPU/CPU hours
+         - kind: fixed
+           description: Fixed incorrect column widths in dashboard tables
+     ```
+
+   - Valid kinds: `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`
+
+5. **MAINTAIN CHANGELOG.md** - Document all releases
+   - Keep a `CHANGELOG.md` file in the `chart/` directory
+   - The version in the changelog MUST match the version in `Chart.yaml`
+   - Follow [Keep a Changelog](https://keepachangelog.com/) format
+   - Include sections: Added, Changed, Deprecated, Removed, Fixed, Security
+   - Example:
+
+     ```markdown
+     ## [1.3.0] - 2025-11-03
+     
+     ### Added
+     - Users by College table in demographics dashboard
+     - Users by Application table in demographics dashboard
+     
+     ### Changed
+     - Updated all demographics tables to display GPU Hours, CPU Hours, and Total Hours
+     - Reorganized demographics dashboard into 2x2 grid layout
+     ```
+
+   - Location: `chart/CHANGELOG.md`
+
 ### Database Safety
 
 1. **NEVER DROP TABLES** - Especially when upgrading or modifying schemas
@@ -393,6 +477,6 @@ Remember: This codebase tracks valuable long-term research data. Preservation an
 
 ---
 
-**Last Updated**: 2025-10-26  
-**Version**: 1.0  
+**Last Updated**: 2025-11-03  
+**Version**: 1.1  
 **Maintained By**: AI Agents working with the JupyterHub Metrics project team

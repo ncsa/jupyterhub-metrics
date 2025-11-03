@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2025-11-03
+
+### Added
+
+- Added Users by College table to demographics dashboard
+- Added Users by Application table to demographics dashboard
+- Added `values.schema.json` for Helm chart validation and documentation
+- Added comprehensive Helm Chart Management section to AGENTS.md with versioning rules
+- Added git commit amend rule to AGENTS.md for cleaner history
+
+### Changed
+
+- Updated Users by Job Title table to include GPU Hours, CPU Hours, and Total Hours columns
+- Reorganized demographics dashboard into 2x2 grid layout (College, Department, Job Title, Application)
+- All four demographic tables now display consistent columns with matching sizes
+- Updated AGENTS.md with requirements for values.schema.json, artifacthub.io changes, and CHANGELOG maintenance
+
 ## [1.2.3] - 2025-10-27
 
 ### Added

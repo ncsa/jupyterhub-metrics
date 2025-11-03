@@ -3,8 +3,21 @@ name: jupyterhub-metrics
 description: A Helm chart for JupyterHub container metrics monitoring with TimescaleDB and Grafana
 type: application
 
-version: 1.2.3
-appVersion: "1.2.3"
+version: 1.2.4
+appVersion: "1.2.4"
+
+annotations:
+  artifacthub.io/changes: |
+    - kind: added
+      description: Added Users by College table to demographics dashboard
+    - kind: added
+      description: Added Users by Application table to demographics dashboard
+    - kind: added
+      description: Added values.schema.json for Helm chart validation
+    - kind: changed
+      description: Updated Users by Job Title table to include GPU Hours, CPU Hours, and Total Hours columns
+    - kind: changed
+      description: Reorganized demographics dashboard into 2x2 grid layout (College, Department, Job Title, Application)
 
 keywords:
   - jupyterhub
