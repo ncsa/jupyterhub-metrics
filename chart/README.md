@@ -374,6 +374,7 @@ helm install my-release ./chart \
 ```
 
 **Required secret keys (default names):**
+
 - `db-password` - TimescaleDB password (configurable via `secrets.externalSecretDbPasswordKey`)
 - `grafana-password` - Grafana admin password (configurable via `secrets.externalSecretGrafanaPasswordKey`)
 - `oauth-client-id` - OAuth client ID (configurable via `secrets.externalSecretOAuthClientIdKey`, required if OAuth enabled)

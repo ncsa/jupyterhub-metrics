@@ -71,17 +71,23 @@ jobs:
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
           # Stop the build if there are Python syntax errors or undefined names
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 flake8 --count --select=E9,F63,F7,F82 --show-source --statistics
+          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" \
+            -print0 | xargs -0 flake8 --count --select=E9,F63,F7,F82 \
+            --show-source --statistics
 
       - name: Run Pylint (static analysis)
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 pylint --max-line-length=120 --disable=C0114,C0115,C0116 || true
+          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" \
+            -print0 | xargs -0 pylint --max-line-length=120 \
+            --disable=C0114,C0115,C0116 || true
 
       - name: Run mypy (type checking)
         if: steps.find-python.outputs.has_python_files == 'true'
         run: |
-          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" -print0 | xargs -0 mypy --ignore-missing-imports --no-strict-optional
+          find . -type f -name "*.py" ! -path "*/venv/*" ! -path "*/.git/*" \
+            -print0 | xargs -0 mypy --ignore-missing-imports \
+            --no-strict-optional
 
   security:
     runs-on: ubuntu-latest

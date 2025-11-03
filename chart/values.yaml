@@ -361,12 +361,10 @@ security:
 # ============================================================================
 advanced:
   # Node selector for pod placement
-  nodeSelector: {}
-    # node-role: monitoring
+  nodeSelector: {} # node-role: monitoring
 
   # Tolerations for node taints
-  tolerations: []
-    # - key: "monitoring"
+  tolerations: [] # - key: "monitoring"
     #   operator: "Equal"
     #   value: "true"
     #   effect: "NoSchedule"
