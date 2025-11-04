@@ -361,13 +361,16 @@ security:
 # ============================================================================
 advanced:
   # Node selector for pod placement
-  nodeSelector: {} # node-role: monitoring
+  nodeSelector: {}
+  #   Example: node-role: monitoring
 
   # Tolerations for node taints
-  tolerations: [] # - key: "monitoring"
-    #   operator: "Equal"
-    #   value: "true"
-    #   effect: "NoSchedule"
+  tolerations: []
+  #   Example:
+  #   - key: "monitoring"
+  #     operator: "Equal"
+  #     value: "true"
+  #     effect: "NoSchedule"
 
   # Pod affinity rules
   affinity: {}
