@@ -699,7 +699,7 @@
                 "value": [
                   {
                     "title": "View User Details",
-                    "url": "/d/jupyterhub-user-detail/jupyterhub-user-detail?var-user_email=${__data.fields.Email}"
+                    "url": "/d/jupyterhub-user-detail/jupyterhub-user-detail?var-user=${__data.fields.Email}"
                   }
                 ]
               },
