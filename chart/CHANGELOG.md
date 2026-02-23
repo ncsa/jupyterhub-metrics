@@ -98,15 +98,16 @@ docker run --rm \
   migrate/migrate \
   -path=/migrations \
   -database "postgres://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=disable" \
-  force 4
+  force 3
 ```
 
-For Kubernetes deployments:
+For Kubernetes deployments (replace namespace, user, password, host, and database name):
 
 ```bash
-kubectl run migrate-stamp --rm -it --image=migrate/migrate \
-  --env="DB_URL=postgres://USER:PASS@HOST:PORT/DBNAME?sslmode=disable" \
-  --restart=Never -- -path=/migrations -database "$DB_URL" force 4
+kubectl -n NAMESPACE run psql-stamp --rm -it --image=postgres:15 \
+  --restart=Never -- \
+  psql "postgres://USER:PASS@HOST:5432/DBNAME?sslmode=disable" \
+  -c "CREATE TABLE IF NOT EXISTS schema_migrations (version bigint NOT NULL, dirty boolean NOT NULL); DELETE FROM schema_migrations; INSERT INTO schema_migrations (version, dirty) VALUES (3, false);"
 ```
 
 After stamping, future `helm upgrade` calls will apply only new migrations.
