@@ -3,31 +3,33 @@ name: jupyterhub-metrics
 description: A Helm chart for JupyterHub container metrics monitoring with TimescaleDB and Grafana
 type: application
 
-version: 1.2.5
-appVersion: "1.2.5"
+version: 1.3.0
+appVersion: "1.3.0"
 
 annotations:
   artifacthub.io/changes: |
     - kind: added
-      description: Added Application Details dashboard with application selector dropdown
+      description: Added Node Breakdown dashboard with cluster-level stats, per-node active users table, CPU/GPU user trends, GPU hours by model, and node summary table
     - kind: added
-      description: Added active sessions time series chart to Application Details dashboard
+      description: Integrated golang-migrate for versioned database migration tracking via schema_migrations table
     - kind: added
-      description: Added CPU vs GPU usage pie chart to Application Details dashboard
-    - kind: added
-      description: Added users table with GPU/CPU/Total hours breakdown to Application Details dashboard
-    - kind: added
-      description: Added colleges and departments usage tables to Application Details dashboard
-    - kind: added
-      description: Added summary statistics (Total Hours, Total Users, Total Sessions, Avg Session Duration) to Application Details dashboard
+      description: Added migrations ConfigMap containing all numbered migration files (000001-000004)
+    - kind: changed
+      description: Updated GPU node classification to use explicit GPU model patterns (v100, a100, h100, h200) instead of CPU-exclusion heuristic
+    - kind: changed
+      description: Added H200 GPU node support across all dashboards and database views
+    - kind: changed
+      description: Database init hook now runs on post-install and post-upgrade (previously post-install only)
+    - kind: changed
+      description: Replaced postgres:15-alpine init container with migrate/migrate image for schema management
     - kind: fixed
-      description: Made ingress.annotations, ingress.className, ingress.host, and ingress.tls optional in values.schema.json
+      description: Fixed all "active now" stat panels to use container_observations instead of session_end > NOW() (which always returned 0)
     - kind: fixed
-      description: Made grafana.port optional with default value of 3000
+      description: Fixed time-series "users over time" panels to use container_observations so long-running sessions are counted correctly
     - kind: fixed
-      description: Made grafana.anonymous.orgName and orgRole optional when anonymous access is disabled
-    - kind: fixed
-      description: Made collector.interval optional with default value of 300 seconds
+      description: Fixed Node Breakdown stat panels to use lastNotNull from time-series query so they reflect the most recent collection rather than returning 0 when no observation falls in a hard-coded NOW()-15min window
+    - kind: changed
+      description: Changed Active Users per Node panel from a static table to a time-series line chart (one line per node) showing users per node over the selected time range
 
 keywords:
   - jupyterhub

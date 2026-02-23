@@ -10,13 +10,24 @@ services:
       - "${DB_PORT}:5432"
     volumes:
       - timescale_data:/var/lib/postgresql/data
-      - ./chart/files/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./chart/files/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://${DB_USER}:${DB_PASSWORD}@timescaledb:5432/${DB_NAME}?sslmode=disable"
+      - "up"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest
@@ -40,8 +51,8 @@ services:
       - ./chart/files/grafana/provisioning:/etc/grafana/provisioning
       - ./chart/files/grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
-      timescaledb:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   collector:
@@ -62,8 +73,8 @@ services:
     volumes:
       - ~/.kube:/home/collector/.kube:ro
     depends_on:
-      timescaledb:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:

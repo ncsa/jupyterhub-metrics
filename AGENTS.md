@@ -147,7 +147,7 @@ This document contains important rules, conventions, and structural information 
 
 2. **NEVER DELETE DATA** - Unless explicitly requested by the user
    - Retention policies are **DISABLED** - keep all data indefinitely
-   - DO NOT add retention policies to `init-db.sql` or `add-policies.sql`
+   - DO NOT add retention policies to migration files
    - Any deletion scripts must be clearly marked and require explicit confirmation
    - When modifying data, use UPDATE instead of DELETE/INSERT where possible
 
@@ -166,15 +166,11 @@ This document contains important rules, conventions, and structural information 
 jupyterhub-metrics/
 ├── .env                          # Database credentials and configuration (DO NOT COMMIT)
 ├── .env.example                  # Template for environment variables
-├── add-policies.sql              # TimescaleDB policies (compression, aggregates)
-├── migrations/                   # Database migration and fix scripts
-│   ├── migrate_*.sql             # Database migration scripts (dated/versioned)
-│   └── fix_*.sql                 # One-off data fix scripts
 ├── AGENTS.md                     # This file - guidelines for AI agents
 └── README.md                     # Project documentation
 ```
 
-**IMPORTANT**: The main database schema (`init-db.sql`) and Grafana dashboards are maintained in `chart/files/` - see Helm Chart section below.
+**IMPORTANT**: Database migrations and Grafana dashboards are maintained in `chart/files/` - see Helm Chart section below.
 
 ### Python Scripts
 
@@ -206,7 +202,15 @@ chart/
 │   ├── cronjob.yaml              # Collector cronjob
 │   └── configmap.yaml            # Configuration
 └── files/                        # **PRIMARY SOURCE** for all config files
-    ├── init-db.sql               # Main database schema (edit this, not root)
+    ├── migrations/               # golang-migrate numbered migration files
+    │   ├── 000001_initial_schema.up.sql
+    │   ├── 000001_initial_schema.down.sql
+    │   ├── 000002_add_college_column.up.sql
+    │   ├── 000002_add_college_column.down.sql
+    │   ├── 000003_fix_fellowships_department.up.sql
+    │   ├── 000003_fix_fellowships_department.down.sql
+    │   ├── 000004_gpu_detection_update.up.sql
+    │   └── 000004_gpu_detection_update.down.sql
     └── grafana/
         ├── provisioning/         # Grafana provisioning configs
         └── dashboards/           # Grafana dashboard JSON files
@@ -215,7 +219,7 @@ chart/
 
 **CRITICAL**: The `chart/files/` directory is the single source of truth for:
 
-- Database schema (`init-db.sql`)
+- Database migrations (`migrations/` directory — golang-migrate numbered files)
 - Grafana dashboards and provisioning
 - All configuration files used by both Kubernetes and local docker-compose
 
@@ -292,8 +296,8 @@ history/
 3. **Script Naming Conventions**
    - `export_*.py` - Scripts that export data to CSV
    - `test_*.py` - Scripts that test functionality without modifying production data
-   - `migrations/migrate_*.sql` - Database migration scripts (include date if possible)
-   - `migrations/fix_*.sql` - One-off data correction scripts
+   - `chart/files/migrations/{version}_{description}.up.sql` - golang-migrate forward migrations
+   - `chart/files/migrations/{version}_{description}.down.sql` - golang-migrate rollback migrations
 
 4. **CSV Export Conventions**
    - Fixed filenames (no timestamps) for regular exports: `user_usage_stats.csv`
@@ -318,7 +322,7 @@ history/
    - Include examples in comments where helpful
 
 3. **Migration Scripts**
-   - Create new files in `migrations/` for migrations (don't modify chart/files/init-db.sql for one-off changes)
+   - Create new numbered migration files in `chart/files/migrations/`
    - Test on a small dataset first
    - Provide verification queries at the end
    - Example: `migrations/migrate_add_user_fields.sql`
@@ -346,10 +350,26 @@ history/
    - Always split on comma and swap when encountering this
    - Example: `"GRAD TEACHING ASST, Siebel School Comp & Data Sci"` → job_title="GRAD TEACHING ASST", department="Siebel School Comp & Data Sci"
 
-2. **GPU vs CPU Detection**
-   - Nodes with "cpu" in the name (case-insensitive) = CPU-only nodes
-   - All other nodes = GPU nodes
-   - Pattern: `node_name NOT ILIKE '%cpu%'` for GPU hours
+2. **"Active Now" queries — always use `container_observations`**
+   - `user_sessions.session_end = MAX(observation_timestamp)` — always a few minutes in the past
+   - `session_end > NOW()` is therefore **always false** and returns 0
+   - For "who is running right now" use: `FROM container_observations WHERE timestamp >= NOW() - INTERVAL '10 minutes'`
+   - This works because the collector inserts a row every 5 minutes per running pod
+
+3. **Time-series "users over time" — always use `container_observations`**
+   - `user_sessions` with `session_start >= $__timeFrom()` misses long-running sessions that started before the window (the majority of users)
+   - Use `FROM container_observations WHERE timestamp >= $__timeFrom() AND timestamp <= $__timeTo()` with `time_bucket('1 hour', timestamp)` — this correctly counts who was active in each bucket regardless of when their session started
+
+4a. **Range queries on `user_sessions` — use overlap condition, not containment**
+   - WRONG: `session_start >= $__timeFrom() AND session_end <= $__timeTo()` — only returns sessions that both started AND ended within the window (misses long-running sessions)
+   - CORRECT: `session_start <= $__timeTo() AND session_end >= $__timeFrom()` — returns any session that overlaps with the window
+   - Use the overlap condition for all stat panels (GPU Hours, CPU Hours, Total Hours, Total Users, Total Sessions, etc.) and table panels that aggregate over a time range
+
+4. **GPU vs CPU Detection**
+   - GPU nodes: nodes whose name matches `v100`, `a100`, `h100`, or `h200` (case-insensitive)
+   - CPU nodes: all other nodes (does NOT match any GPU model pattern)
+   - Pattern: `(node_name ILIKE '%v100%' OR node_name ILIKE '%a100%' OR node_name ILIKE '%h100%' OR node_name ILIKE '%h200%')` for GPU hours
+   - When a new GPU model is added to the cluster, add its pattern to all dashboards and create a new migration updating `user_session_stats`
 
 ---
 
@@ -381,21 +401,48 @@ python export_user_usage_stats.py
 
 ### Database Migrations
 
-1. Create a new migration file in the migrations folder: `migrations/migrate_description_YYYYMMDD.sql`
-2. Use idempotent operations (IF EXISTS, IF NOT EXISTS)
-3. Test the migration:
+Migrations are managed with **golang-migrate**. Migration files live in `chart/files/migrations/`
+and are tracked in the `schema_migrations` database table. Both docker-compose and Helm apply
+migrations automatically on startup/upgrade.
+
+**Adding a new migration:**
+
+1. Create two files in `chart/files/migrations/`:
+   - `{version}_{description}.up.sql` — forward migration
+   - `{version}_{description}.down.sql` — rollback (or `SELECT 1;` with comment if not reversible)
+   - Versions are zero-padded integers: `000005`, `000006`, etc.
+   - Use idempotent operations (`IF EXISTS`, `IF NOT EXISTS`, `CREATE OR REPLACE`)
+2. Test locally:
 
    ```bash
-   psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f migrations/migrate_description.sql
+   docker compose up migrate
+   # Check version applied:
+   docker run --rm -v ./chart/files/migrations:/migrations migrate/migrate \
+     -path=/migrations \
+     -database "postgres://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=disable" \
+     version
    ```
 
-4. Update `chart/files/init-db.sql` if the changes should apply to new deployments
+3. Commit both `.up.sql` and `.down.sql` files — Helm will package them into the migrations ConfigMap
+   and apply them on next `helm upgrade`.
+
+**Stamping an existing database** (for databases already running the schema before a migration was added):
+
+```bash
+docker run --rm -v ./chart/files/migrations:/migrations migrate/migrate \
+  -path=/migrations \
+  -database "postgres://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=disable" \
+  force {version}
+```
+
+**DO NOT** modify `chart/files/init-db.sql` for incremental schema changes — it is a legacy reference
+only. All schema evolution happens through numbered migration files.
 
 ### Configuration Files - Single Source of Truth
 
 **All configuration files are maintained in `chart/files/`:**
 
-- Database schema: Edit `chart/files/init-db.sql` directly
+- Database migrations: Edit/add files in `chart/files/migrations/` directly
 - Grafana dashboards: Edit `chart/files/grafana/dashboards/*.json` directly
 - Grafana provisioning: Edit `chart/files/grafana/provisioning/*` directly
 
@@ -450,13 +497,13 @@ Both `docker-compose.yml` and Kubernetes deployments reference these files.
 Before making significant changes:
 
 - [ ] Read this document thoroughly
-- [ ] Understand the current schema (check `init-db.sql`)
+- [ ] Understand the current schema (check `chart/files/migrations/`)
 - [ ] Identify which files need to be kept in sync
 - [ ] Create a backup or migration script if modifying schema
 - [ ] Use `IF EXISTS` / `IF NOT EXISTS` for idempotent operations
 - [ ] Test on a small dataset first
 - [ ] Provide rollback instructions
-- [ ] Update both `init-db.sql` and `chart/files/init-db.sql` if needed
+- [ ] Add new migration files to `chart/files/migrations/` if schema changes are needed
 - [ ] Update this AGENTS.md if you learned new important rules
 
 ---
@@ -479,6 +526,6 @@ Remember: This codebase tracks valuable long-term research data. Preservation an
 
 ---
 
-**Last Updated**: 2025-11-03  
-**Version**: 1.1  
+**Last Updated**: 2026-02-23
+**Version**: 1.2
 **Maintained By**: AI Agents working with the JupyterHub Metrics project team

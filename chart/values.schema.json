@@ -574,10 +574,6 @@
       "type": "object",
       "description": "Source files configuration for update-templates.sh script",
       "properties": {
-        "initDbSql": {
-          "type": "string",
-          "description": "Path to init-db.sql (relative to project root)"
-        },
         "collectorScript": {
           "type": "string",
           "description": "Path to collector.sh (relative to project root)"

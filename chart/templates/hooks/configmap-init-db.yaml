@@ -2,15 +2,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "jupyterhub-metrics.fullname" . }}-init-db-hook
+  name: {{ include "jupyterhub-metrics.fullname" . }}-migrations-hook
   namespace: {{ include "jupyterhub-metrics.namespace" . }}
   labels:
     {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: database-init
   annotations:
-    "helm.sh/hook": post-install
+    "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 data:
-  init-db.sql: |
-{{ .Files.Get "files/init-db.sql" | indent 4 }}
+{{- range $path, $_ := .Files.Glob "files/migrations/*.sql" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
 {{- end }}

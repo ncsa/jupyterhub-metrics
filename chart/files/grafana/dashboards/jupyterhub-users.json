@@ -966,7 +966,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  CASE \n    WHEN node_name LIKE '%gpu%' OR node_name LIKE '%a100%' OR node_name LIKE '%v100%' THEN 'GPU'\n    ELSE 'CPU'\n  END AS \"Node Type\",\n  SUM(runtime_hours) AS \"Runtime Hours\"\nFROM user_sessions\nWHERE session_start <= $__timeTo()\n  AND session_end >= $__timeFrom()\nGROUP BY \"Node Type\"\nORDER BY \"Runtime Hours\" DESC;",
+          "rawSql": "SELECT\n  CASE \n    WHEN node_name ILIKE '%v100%' OR node_name ILIKE '%a100%' OR node_name ILIKE '%h100%' OR node_name ILIKE '%h200%' THEN 'GPU'\n    ELSE 'CPU'\n  END AS \"Node Type\",\n  SUM(runtime_hours) AS \"Runtime Hours\"\nFROM user_sessions\nWHERE session_start <= $__timeTo()\n  AND session_end >= $__timeFrom()\nGROUP BY \"Node Type\"\nORDER BY \"Runtime Hours\" DESC;",
           "refId": "A",
           "select": [
             [

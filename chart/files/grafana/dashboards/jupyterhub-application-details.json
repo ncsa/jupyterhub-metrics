@@ -96,7 +96,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  ROUND(SUM(CASE WHEN us.node_name LIKE '%gpu%' OR us.node_name LIKE '%a100%' OR us.node_name LIKE '%v100%' THEN us.runtime_hours ELSE 0 END)::numeric, 0) AS \"GPU Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start >= $__timeFrom()\n  AND us.session_end <= $__timeTo();",
+          "rawSql": "SELECT\n  ROUND(SUM(CASE WHEN us.node_name ILIKE '%v100%' OR us.node_name ILIKE '%a100%' OR us.node_name ILIKE '%h100%' OR us.node_name ILIKE '%h200%' THEN us.runtime_hours ELSE 0 END)::numeric, 0) AS \"GPU Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom();",
           "refId": "A",
           "select": [
             [
@@ -167,7 +167,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  ROUND(SUM(CASE WHEN us.node_name NOT LIKE '%gpu%' AND us.node_name NOT LIKE '%a100%' AND us.node_name NOT LIKE '%v100%' THEN us.runtime_hours ELSE 0 END)::numeric, 0) AS \"CPU Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start >= $__timeFrom()\n  AND us.session_end <= $__timeTo();",
+          "rawSql": "SELECT\n  ROUND(SUM(CASE WHEN NOT (us.node_name ILIKE '%v100%' OR us.node_name ILIKE '%a100%' OR us.node_name ILIKE '%h100%' OR us.node_name ILIKE '%h200%') THEN us.runtime_hours ELSE 0 END)::numeric, 0) AS \"CPU Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom();",
           "refId": "A",
           "select": [
             [
@@ -238,7 +238,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  ROUND(SUM(us.runtime_hours)::numeric, 0) AS \"Total Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start >= $__timeFrom()\n  AND us.session_end <= $__timeTo();",
+          "rawSql": "SELECT\n  ROUND(SUM(us.runtime_hours)::numeric, 0) AS \"Total Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom();",
           "refId": "A",
           "select": [
             [
@@ -309,7 +309,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  COUNT(DISTINCT us.user_email) AS \"Total Users\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start >= $__timeFrom()\n  AND us.session_end <= $__timeTo();",
+          "rawSql": "SELECT\n  COUNT(DISTINCT us.user_email) AS \"Total Users\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom();",
           "refId": "A",
           "select": [
             [
@@ -380,7 +380,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  COUNT(*) AS \"Total Sessions\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start >= $__timeFrom()\n  AND us.session_end <= $__timeTo();",
+          "rawSql": "SELECT\n  COUNT(*) AS \"Total Sessions\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom();",
           "refId": "A",
           "select": [
             [
@@ -451,7 +451,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  AVG(us.runtime_hours) AS \"Avg Session Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start >= $__timeFrom()\n  AND us.session_end <= $__timeTo();",
+          "rawSql": "SELECT\n  AVG(us.runtime_hours) AS \"Avg Session Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom();",
           "refId": "A",
           "select": [
             [
@@ -640,7 +640,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  CASE\n    WHEN us.node_name LIKE '%gpu%' OR us.node_name LIKE '%a100%' OR us.node_name LIKE '%v100%' THEN 'GPU'\n    ELSE 'CPU'\n  END AS \"Node Type\",\n  SUM(us.runtime_hours) AS \"Runtime Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom()\nGROUP BY \"Node Type\"\nORDER BY \"Runtime Hours\" DESC;",
+          "rawSql": "SELECT\n  CASE\n    WHEN us.node_name ILIKE '%v100%' OR us.node_name ILIKE '%a100%' OR us.node_name ILIKE '%h100%' OR us.node_name ILIKE '%h200%' THEN 'GPU'\n    ELSE 'CPU'\n  END AS \"Node Type\",\n  SUM(us.runtime_hours) AS \"Runtime Hours\"\nFROM user_sessions us\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom()\nGROUP BY \"Node Type\"\nORDER BY \"Runtime Hours\" DESC;",
           "refId": "A",
           "select": [
             [
@@ -831,7 +831,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  us.user_email AS \"Email\",\n  COALESCE(u.full_name, us.user_email) AS \"Name\",\n  COUNT(*) AS \"Sessions\",\n  ROUND(SUM(CASE WHEN us.node_name LIKE '%gpu%' OR us.node_name LIKE '%a100%' OR us.node_name LIKE '%v100%' THEN us.runtime_hours ELSE 0 END)::numeric, 2) AS \"GPU\",\n  ROUND(SUM(CASE WHEN us.node_name NOT LIKE '%gpu%' AND us.node_name NOT LIKE '%a100%' AND us.node_name NOT LIKE '%v100%' THEN us.runtime_hours ELSE 0 END)::numeric, 2) AS \"CPU\",\n  ROUND(SUM(us.runtime_hours)::numeric, 2) AS \"Total\"\nFROM user_sessions us\nLEFT JOIN users u ON us.user_email = u.email\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom()\nGROUP BY us.user_email, u.full_name\nORDER BY \"Total\" DESC;",
+          "rawSql": "SELECT\n  us.user_email AS \"Email\",\n  COALESCE(u.full_name, us.user_email) AS \"Name\",\n  COUNT(*) AS \"Sessions\",\n  ROUND(SUM(CASE WHEN us.node_name ILIKE '%v100%' OR us.node_name ILIKE '%a100%' OR us.node_name ILIKE '%h100%' OR us.node_name ILIKE '%h200%' THEN us.runtime_hours ELSE 0 END)::numeric, 2) AS \"GPU\",\n  ROUND(SUM(CASE WHEN NOT (us.node_name ILIKE '%v100%' OR us.node_name ILIKE '%a100%' OR us.node_name ILIKE '%h100%' OR us.node_name ILIKE '%h200%') THEN us.runtime_hours ELSE 0 END)::numeric, 2) AS \"CPU\",\n  ROUND(SUM(us.runtime_hours)::numeric, 2) AS \"Total\"\nFROM user_sessions us\nLEFT JOIN users u ON us.user_email = u.email\nWHERE\n  us.container_base = '$application'\n  AND us.session_start <= $__timeTo()\n  AND us.session_end >= $__timeFrom()\nGROUP BY us.user_email, u.full_name\nORDER BY \"Total\" DESC;",
           "refId": "A",
           "select": [
             [

@@ -298,7 +298,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT \n  COALESCE(SUM(runtime_hours), 0) AS \"GPU Hours\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND node_name NOT ILIKE '%cpu%'\n  AND session_start <= $__timeTo()\n  AND session_end >= $__timeFrom();",
+          "rawSql": "SELECT \n  COALESCE(SUM(runtime_hours), 0) AS \"GPU Hours\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND (node_name ILIKE '%v100%' OR node_name ILIKE '%a100%' OR node_name ILIKE '%h100%' OR node_name ILIKE '%h200%')\n  AND session_start <= $__timeTo()\n  AND session_end >= $__timeFrom();",
           "refId": "A"
         }
       ],
@@ -352,7 +352,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT \n  COALESCE(SUM(runtime_hours), 0) AS \"CPU Hours\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND node_name ILIKE '%cpu%'\n  AND session_start <= $__timeTo()\n  AND session_end >= $__timeFrom();",
+          "rawSql": "SELECT \n  COALESCE(SUM(runtime_hours), 0) AS \"CPU Hours\"\nFROM user_sessions\nWHERE user_email = '$user'\n  AND NOT (node_name ILIKE '%v100%' OR node_name ILIKE '%a100%' OR node_name ILIKE '%h100%' OR node_name ILIKE '%h200%')\n  AND session_start <= $__timeTo()\n  AND session_end >= $__timeFrom();",
           "refId": "A"
         }
       ],

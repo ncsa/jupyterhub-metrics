@@ -98,7 +98,6 @@ SELECT add_continuous_aggregate_policy('hourly_node_stats',
     schedule_interval => INTERVAL '1 hour');
 
 -- Add column comments for hourly_node_stats
--- Note: TimescaleDB continuous aggregates are created as views, not materialized views
 COMMENT ON VIEW hourly_node_stats IS 'Hourly aggregated statistics per Kubernetes node (automatically maintained by TimescaleDB)';
 COMMENT ON COLUMN hourly_node_stats.hour IS 'Start of the 1-hour time bucket';
 COMMENT ON COLUMN hourly_node_stats.node_name IS 'Kubernetes node name';
@@ -125,7 +124,6 @@ SELECT add_continuous_aggregate_policy('hourly_image_stats',
     schedule_interval => INTERVAL '1 hour');
 
 -- Add column comments for hourly_image_stats
--- Note: TimescaleDB continuous aggregates are created as views, not materialized views
 COMMENT ON VIEW hourly_image_stats IS 'Hourly aggregated statistics per container image (automatically maintained by TimescaleDB)';
 COMMENT ON COLUMN hourly_image_stats.hour IS 'Start of the 1-hour time bucket';
 COMMENT ON COLUMN hourly_image_stats.container_base IS 'Container image name without tag';
@@ -223,8 +221,8 @@ CREATE OR REPLACE VIEW user_session_stats AS
 SELECT
   user_email,
   SUM(runtime_hours) AS total_hours,
-  SUM(CASE WHEN node_name NOT ILIKE '%cpu%' THEN runtime_hours ELSE 0 END) AS gpu_hours,
-  SUM(CASE WHEN node_name ILIKE '%cpu%' THEN runtime_hours ELSE 0 END) AS cpu_hours,
+  SUM(CASE WHEN (node_name ILIKE '%v100%' OR node_name ILIKE '%a100%' OR node_name ILIKE '%h100%' OR node_name ILIKE '%h200%') THEN runtime_hours ELSE 0 END) AS gpu_hours,
+  SUM(CASE WHEN NOT (node_name ILIKE '%v100%' OR node_name ILIKE '%a100%' OR node_name ILIKE '%h100%' OR node_name ILIKE '%h200%') THEN runtime_hours ELSE 0 END) AS cpu_hours,
   COUNT(*) AS total_sessions,
   COUNT(DISTINCT container_base) AS applications_used,
   MIN(session_start) AS first_session,
@@ -235,8 +233,8 @@ GROUP BY user_email;
 -- Add column comments for user_session_stats view
 COMMENT ON COLUMN user_session_stats.user_email IS 'User email address';
 COMMENT ON COLUMN user_session_stats.total_hours IS 'Total runtime hours across all sessions';
-COMMENT ON COLUMN user_session_stats.gpu_hours IS 'Total runtime hours on GPU nodes (node_name NOT ILIKE ''%cpu%'')';
-COMMENT ON COLUMN user_session_stats.cpu_hours IS 'Total runtime hours on CPU-only nodes (node_name ILIKE ''%cpu%'')';
+COMMENT ON COLUMN user_session_stats.gpu_hours IS 'Total runtime hours on GPU nodes (v100, a100, h100, h200 by node name pattern)';
+COMMENT ON COLUMN user_session_stats.cpu_hours IS 'Total runtime hours on CPU-only nodes (not v100, a100, h100, or h200)';
 COMMENT ON COLUMN user_session_stats.total_sessions IS 'Total number of sessions (continuous runs with < 1 hour gaps)';
 COMMENT ON COLUMN user_session_stats.applications_used IS 'Number of distinct container images used';
 COMMENT ON COLUMN user_session_stats.first_session IS 'Timestamp of first session start';

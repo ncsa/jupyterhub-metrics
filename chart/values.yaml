@@ -387,9 +387,6 @@ advanced:
 # These paths are used by the update-templates.sh script to sync source files
 # into the Helm chart templates
 sourceFiles:
-  # Path to init-db.sql (relative to project root)
-  initDbSql: init-db.sql
-
   # Path to collector.sh (relative to project root)
   collectorScript: collector.sh
 

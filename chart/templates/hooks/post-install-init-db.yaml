@@ -1,6 +1,8 @@
 {{- if .Values.timescaledb.enabled }}
-# Post-install hook: Initialize database after TimescaleDB is running
-# This runs after the main deployment to set up the database schema
+# Post-install/post-upgrade hook: Run database migrations after TimescaleDB is running.
+# Uses golang-migrate to apply all pending migrations from the migrations ConfigMap.
+# The schema_migrations table tracks which migrations have been applied, making this
+# safe to run on both fresh installs and upgrades (idempotent).
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -10,7 +12,7 @@ metadata:
     {{- include "jupyterhub-metrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: database-init
   annotations:
-    "helm.sh/hook": post-install
+    "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
@@ -77,64 +79,39 @@ spec:
                   name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: {{ include "jupyterhub-metrics.timescaledb.passwordKey" . }}
       containers:
-        - name: init-db
-          image: postgres:15-alpine
+        - name: migrate
+          image: migrate/migrate
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - "ALL"
-            runAsUser: 70
+            runAsUser: 65534
           env:
-            - name: PGHOST
+            - name: DB_HOST
               value: {{ include "jupyterhub-metrics.timescaledb.host" . }}
-            - name: PGPORT
+            - name: DB_PORT
               value: {{ include "jupyterhub-metrics.timescaledb.port" . | quote }}
-            - name: PGDATABASE
+            - name: DB_NAME
               value: {{ .Values.timescaledb.database.name | quote }}
-            - name: PGUSER
+            - name: DB_USER
               value: {{ .Values.timescaledb.database.user | quote }}
-            - name: PGPASSWORD
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "jupyterhub-metrics.timescaledb.passwordSecret" . }}
                   key: {{ include "jupyterhub-metrics.timescaledb.passwordKey" . }}
-          command:
-            - /bin/sh
-            - -c
-            - |
-              set -e
-              echo "Starting database initialization..."
-
-              # Check if database exists and has tables
-              RESULT=$(psql -tc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "-1")
-
-              if [ "$RESULT" -gt 0 ]; then
-                echo "Database already initialized with $RESULT tables"
-                exit 0
-              fi
-              if [ "$RESULT" -gt 0 ]; then
-                echo "Database already initialized with $RESULT tables"
-                exit 0
-              fi
-              if [ "$RESULT" -lt 0 ]; then
-                echo "Error checking tables tables"
-                echo "${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}"
-                psql -tc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';"
-                exit 0
-              fi
-
-              echo "Initializing database schema..."
-              psql < /init/init-db.sql
-
-              echo "Database initialization completed successfully"
+          args:
+            - "-path=/migrations"
+            - "-database=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable"
+            - "up"
           volumeMounts:
-            - name: init-db-script
-              mountPath: /init
+            - name: migrations
+              mountPath: /migrations
       volumes:
-        - name: init-db-script
+        - name: migrations
           configMap:
-            name: {{ include "jupyterhub-metrics.fullname" . }}-init-db-hook
-            defaultMode: 0755
+            name: {{ include "jupyterhub-metrics.fullname" . }}-migrations-hook
+            defaultMode: 0444
 {{- end }}
